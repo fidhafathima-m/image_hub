@@ -1,0 +1,28 @@
+{
+  "name": "task_2",
+  "version": "1.0.0",
+  "description": "a simple page with register, login and image crud operations",
+  "keywords": [
+    "image_hub"
+  ],
+  "homepage": "https://github.com/fidhafathima-m/image_hub#readme",
+  "bugs": {
+    "url": "https://github.com/fidhafathima-m/image_hub/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fidhafathima-m/image_hub.git"
+  },
+  "license": "ISC",
+  "author": "Fidha Fathima M",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "mongoose": "^9.0.2",
+    "nodemon": "^3.1.11"
+  }
+}
