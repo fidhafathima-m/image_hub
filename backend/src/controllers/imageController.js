@@ -4,7 +4,7 @@ import fs from "fs"
 
 export const getImages = async(req, res) => {
     try {
-        const images = (await Image.find({user: req.user._id})).toSorted({order: 1, createdAt: -1})
+        const images = await Image.find({ user: req.user._id }).sort({ order: 1, createdAt: -1 });
 
         res.json(images);
     } catch (error) {
@@ -30,11 +30,11 @@ export const uploadImage = async(req, res) => {
         const image = new Image({
             user: req.user._id,
             title,
-            url: `/uploads/${file.fileName}`,
-            fileName: file.fileName,
-            originalName: file.originalName,
+            url: `/uploads/${file.filename}`,
+            fileName: file.filename,
+            originalName: file.originalname,
             size: file.size,
-            mimeType: file.mimeType,
+            mimeType: file.mimetype,
             order
         });
         await image.save();
@@ -51,7 +51,7 @@ export const bulkUploadImages = async(req, res) => {
         const {titles} = req.body;
         const files = req.files
 
-        if(!files || file.length === 0) {
+        if(!files || files.length === 0) {
             return res.status(400).json({error: "No files uploaded"})
         }
 
@@ -73,11 +73,11 @@ export const bulkUploadImages = async(req, res) => {
             const image = new Image({
                 user: req.user._id,
                 title,
-                url: `/uploads/${file.fileName}`,
-                fileName: file.fileName,
-                originalName: file.originalName,
+                url: `/uploads/${file.filename}`,
+                fileName: file.filename,
+                originalName: file.originalname,
                 size: file.size,
-                mimeType: file.mimeType,
+                mimeType: file.mimetype,
                 order
             })
 
@@ -112,14 +112,14 @@ export const updateImage = async(req, res) => {
         if(file) {
             const oldFilePath = path.join("uploads", image.fileName);
             if(fs.existsSync(oldFilePath)) {
-                fs.unlink(oldFilePath)
+                fs.unlinkSync(oldFilePath)
             }
 
-            image.url = `/uploads/${file.fileName}`;
-            image.fileName = file.fileName;
-            image.originalName = file.originalName;
+            image.url = `/uploads/${file.filename}`;
+            image.fileName = file.filename;
+            image.originalName = file.originalname;
             image.size = file.size;
-            image.memeType = file.mimeType
+            image.memeType = file.mimetype
         }
 
         if(title) {
@@ -151,10 +151,10 @@ export const deleteImage = async(req, res) => {
         }
 
         // delete file from server
-        const filePath = path.join(`uploads/${image.fileName}`)
+        const filePath = path.join(process.cwd(), "uploads", image.fileName);
 
         if(fs.existsSync(filePath)) {
-            fs.unlink(filePath)
+            fs.unlinkSync(filePath)
         }
 
         res.json({message: "Image deleted successfully!"})
@@ -169,13 +169,13 @@ export const rearrangeImages = async(req, res) => {
     try {
         const {imageOrder} = req.body
 
-        if(Array.isArray(imageOrder)) {
+        if(!Array.isArray(imageOrder)) {
             return res.status(400).json({error: "Invalid image order array"})
         }
 
         // update order for each image
         const updatePromises = imageOrder.map((imageId, index) => {
-            return Image.findByIdAndUpdate(
+            return Image.findOneAndUpdate(
                 {_id: imageId, user: req.user._id}, 
                 {order: index},
                 {new: true}

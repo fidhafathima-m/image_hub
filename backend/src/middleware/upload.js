@@ -14,14 +14,14 @@ const storate = multer.diskStorage({
     },
     filename: function (req, file, cb) {
         const suffix = Date.now() + "-" + Math.round(Math.random() * 1E9);
-        cb(null, file.filename + suffix + path.extname(file.originalname));
+        cb(null, file.fieldname + "-" + suffix + path.extname(file.originalname));
     }
 })
 
 const fileFilter = (req, file, cb) => {
     const allowedTypes = /jpeg|png|jpg|gif|webp/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimeType = allowedTypes.test(file.mimeType);
+    const mimeType = allowedTypes.test(file.mimetype);
 
     if(mimeType && extname) {
         return cb(null, true)

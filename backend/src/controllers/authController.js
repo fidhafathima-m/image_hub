@@ -1,7 +1,7 @@
 import User from "../models/UserSchema.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import crypo from "crypto"
+import { randomBytes, createHash } from "crypto";
 import nodemailer from "nodemailer"
 
 // Register User
@@ -14,7 +14,7 @@ export const register = async(req, res) => {
             return res.status(400).json({error: "User already exists, please login."});
         }
 
-        const salt = await bcrypt.getSalt(10);
+        const salt = await bcrypt.genSalt(10);
         const hashPassword = await bcrypt.hash(password, salt);
 
         // create user
@@ -22,7 +22,7 @@ export const register = async(req, res) => {
             userName,
             email,
             phoneNumber,
-            hashPassword
+            password: hashPassword
         })
         await user.save()
 
@@ -93,11 +93,10 @@ export const forgetPassword = async(req, res) => {
         }
 
         // generate reset token
-        const resetToken = crypto.randomBytes(32).toString("hex");
-        const resetTokenExpiry = Date.now() * 3600000   // 1 h
+        const resetToken = randomBytes(32).toString("hex");
+        const resetTokenExpiry = Date.now() + 3600000   // 1 h
 
-        user.resetPasswordToken = crypto
-        .createHash("sha256")
+        user.resetPasswordToken = createHash("sha256")
         .update(resetToken)
         .digest("hex");
 
@@ -144,8 +143,7 @@ export const resetPassword = async(req, res) => {
         const {token, password} = req.body;
 
         // hash token
-        const hashToken = crypo
-        .createHash("sh256")
+        const hashToken = createHash("sha256")
         .update(token)
         .digest("hex")
 
