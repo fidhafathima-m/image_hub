@@ -84,4 +84,4 @@ VITE_BASE_URL=http://localhost:5000
 - PUT /images/rearrange/order – Rearrange images
 
 
-**Built with MERN stack** • [Live Demo](https://imagehub.com)
+**Built with MERN stack** • [Live Demo](https://image-hub-iota.vercel.app/)
