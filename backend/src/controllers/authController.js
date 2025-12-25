@@ -139,7 +139,7 @@ export const forgetPassword = async (req, res) => {
     // Send email using SendGrid
     const msg = {
       to: user.email,
-      from: process.env.EMAIL_FROM,
+      from: process.env.EMAIL_USER,
       subject: "Password Reset Request",
       html: `
         <h1>Password Reset Request</h1>
