@@ -19,8 +19,8 @@ A full-stack image gallery application with authentication, image management, an
 
 ## Tech Stack
 
-**Backend:** Node.js, Express, MongoDB, JWT, Multer
-**Frontend:** React, Vite, Tailwind CSS, @dnd-kit, Axios
+- **Backend:** Node.js, Express, MongoDB, JWT, Multer
+- **Frontend:** React, Vite, Tailwind CSS, @dnd-kit, Axios
 
 ## Quick Start
 1. Prerequisites
@@ -62,8 +62,8 @@ VITE_BASE_URL=http://localhost:5000
 
 5. Access URLs
 
-**Frontend:** http://localhost:5173
-**Backend API:** http://localhost:5000
+- **Frontend:** http://localhost:5173
+- **Backend API:** http://localhost:5000
 
 ## API Endpoints
 
@@ -84,4 +84,4 @@ VITE_BASE_URL=http://localhost:5000
 - PUT /images/rearrange/order – Rearrange images
 
 
-**Built with MERN stack** • (Live Demo)[https://imagehub.com]
+**Built with MERN stack** • [Live Demo](https://imagehub.com)
