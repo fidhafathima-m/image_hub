@@ -19,7 +19,7 @@ import { Upload, Save, CheckSquare, X } from "lucide-react";
 import { imagesAPI } from "../../api/images";
 import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
-import ImageCard from "./Imagecard";
+import ImageCard from "./ImageCard";
 import EditModal from "./EditModal";
 
 // Sortable Item Component
