@@ -22,13 +22,30 @@ import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ImageCard from "./ImageCard";
 import EditModal from "./EditModal";
-import { Image, SortableImageCardProps, ImageGalleryState } from "../../types/images";
+import { Image, SortableImageCardProps } from "../../types/images";
 
 // Add props interface
 interface ImageGalleryProps {
   onEdit?: (image: Image) => void;
   onDelete?: () => void;
-  onStatsUpdate?: (stats: { totalImages: number; totalSize: string; recentUploads: number }) => void;
+  onStatsUpdate?: (stats: {
+    totalImages: number;
+    totalSize: string;
+    recentUploads: number;
+  }) => void;
+}
+
+interface ImageGalleryState {
+  images: Image[];
+  loading: boolean;
+  loadingMore: boolean;
+  selectedImages: Set<string>;
+  selectionMode: boolean;
+  editingImage: Image | null;
+  rearranged: boolean;
+  page: number;
+  hasMore: boolean;
+  totalImages: number;
 }
 
 // Sortable Item Component
@@ -71,19 +88,27 @@ const SortableImageCard: React.FC<SortableImageCardProps> = ({
 };
 
 // Update component to accept props
-const ImageGallery: React.FC<ImageGalleryProps> = ({ 
-  onEdit, 
+const ImageGallery: React.FC<ImageGalleryProps> = ({
+  onEdit,
   onDelete,
-  onStatsUpdate 
+  onStatsUpdate,
 }) => {
   const [state, setState] = useState<ImageGalleryState>({
     images: [],
     loading: true,
+    loadingMore: false,
     selectedImages: new Set(),
     selectionMode: false,
     editingImage: null,
     rearranged: false,
+    page: 1,
+    hasMore: true,
+    totalImages: 0,
   });
+
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const isFetchingRef = useRef(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -102,37 +127,83 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
     onStatsUpdateRef.current = onStatsUpdate;
   }, [onStatsUpdate]);
 
-  const fetchImages = useCallback(async (): Promise<void> => {
+  const fetchImages = useCallback(async (page: number = 1, isLoadMore: boolean = false): Promise<void> => {
+    if (isFetchingRef.current) return;
+    
     try {
-      setState(prev => ({ ...prev, loading: true }));
-      const data = await imagesAPI.getImages();
-      setState(prev => ({ ...prev, images: data, loading: false }));
+      isFetchingRef.current = true;
       
-      // Calculate and send stats if callback provided
+      if (isLoadMore) {
+        setState(prev => ({ ...prev, loadingMore: true }));
+      } else {
+        setState(prev => ({ ...prev, loading: true }));
+      }
+
+      const response = await imagesAPI.getImages(page, 10);
+      
+      setState(prev => ({
+        ...prev,
+        images: page === 1 ? response.images : [...prev.images, ...response.images],
+        page: response.pagination.page,
+        hasMore: response.pagination.hasMore,
+        totalImages: response.pagination.total,
+        loading: false,
+        loadingMore: false,
+      }));
+
+      // Call onStatsUpdate callback if provided
       if (onStatsUpdateRef.current) {
-        const totalSize = data.reduce((acc, img) => acc + (img.size || 0), 0);
-        const recentUploads = data.filter(img => {
-          const uploadDate = new Date(img.createdAt);
-          const weekAgo = new Date();
-          weekAgo.setDate(weekAgo.getDate() - 7);
-          return uploadDate > weekAgo;
-        }).length;
-        
         onStatsUpdateRef.current({
-          totalImages: data.length,
-          totalSize: `${(totalSize / (1024 * 1024)).toFixed(2)} MB`,
-          recentUploads
+          totalImages: response.pagination.total,
+          totalSize: '0 MB', // You'll need to calculate this from images
+          recentUploads: 0
         });
       }
     } catch (error: any) {
-      toast.error(error.message || "Failed to fetch images");
-      setState(prev => ({ ...prev, loading: false }));
+      console.error('Fetch images error:', error);
+      toast.error(error.message || "Failed to load images");
+      setState(prev => ({ 
+        ...prev, 
+        loading: false, 
+        loadingMore: false 
+      }));
+    } finally {
+      isFetchingRef.current = false;
     }
   }, []);
 
+  // Initial fetch
   useEffect(() => {
-    fetchImages();
+    fetchImages(1);
   }, [fetchImages]);
+
+  // Setup intersection observer for lazy loading
+  useEffect(() => {
+    if (!state.hasMore || state.loading || state.loadingMore) return;
+
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && state.hasMore && !isFetchingRef.current) {
+          fetchImages(state.page + 1, true);
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    );
+
+    if (loadMoreRef.current) {
+      observerRef.current.observe(loadMoreRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [state.hasMore, state.loading, state.loadingMore, state.page, fetchImages]);
 
   const handleDragEnd = (event: DragEndEvent): void => {
     const { active, over } = event;
@@ -171,39 +242,52 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
       if (prev.selectedImages.size === prev.images.length) {
         return { ...prev, selectedImages: new Set() };
       } else {
-        return { ...prev, selectedImages: new Set(prev.images.map(img => img._id)) };
+        return {
+          ...prev,
+          selectedImages: new Set(prev.images.map((img) => img._id)),
+        };
       }
     });
   };
 
   const handleDeleteSelected = async (): Promise<void> => {
-  const { selectedImages, images } = state;
-  
-  if (selectedImages.size === 0) return;
+    const { selectedImages } = state;
 
-  if (window.confirm(`Are you sure you want to delete ${selectedImages.size} selected image${selectedImages.size === 1 ? '' : 's'}?`)) {
-    try {
-      // Use bulk delete API
-      const imageIds = Array.from(selectedImages);
-      const result = await imagesAPI.bulkDeleteImages(imageIds);
+    if (selectedImages.size === 0) return;
 
-      toast.success(result.message || `${selectedImages.size} images deleted successfully`);
-      setState(prev => ({ 
-        ...prev, 
-        selectedImages: new Set(),
-        selectionMode: false 
-      }));
-      fetchImages();
-      
-      // Call onDelete callback if provided
-      if (onDelete) {
-        onDelete();
+    if (
+      window.confirm(
+        `Are you sure you want to delete ${selectedImages.size} selected image${
+          selectedImages.size === 1 ? "" : "s"
+        }?`
+      )
+    ) {
+      try {
+        // Use bulk delete API
+        const imageIds = Array.from(selectedImages);
+        const result = await imagesAPI.bulkDeleteImages(imageIds);
+
+        toast.success(
+          result.message || `${selectedImages.size} images deleted successfully`
+        );
+        setState(prev => ({
+          ...prev,
+          selectedImages: new Set(),
+          selectionMode: false,
+        }));
+        
+        // Refresh images from the beginning
+        fetchImages(1);
+        
+        // Call onDelete callback if provided
+        if (onDelete) {
+          onDelete();
+        }
+      } catch (error: any) {
+        toast.error(error.message || "Failed to delete images");
       }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete images");
     }
-  }
-};
+  };
 
   const handleSaveOrder = async (): Promise<void> => {
     try {
@@ -226,7 +310,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   };
 
   const handleDelete = (): void => {
-    fetchImages();
+    fetchImages(1);
     // Clear selection after delete
     setState(prev => ({ ...prev, selectedImages: new Set() }));
     // Call onDelete callback if provided
@@ -236,13 +320,22 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   };
 
   const handleEditSuccess = (): void => {
-    fetchImages();
+    fetchImages(1);
     setState(prev => ({ ...prev, editingImage: null }));
   };
 
-  const { images, loading, selectedImages, selectionMode, editingImage, rearranged } = state;
+  const {
+    images,
+    loading,
+    selectedImages,
+    selectionMode,
+    editingImage,
+    rearranged,
+    loadingMore,
+    totalImages,
+  } = state;
 
-  if (loading) {
+  if (loading && images.length === 0) {
     return (
       <div className="flex justify-center items-center h-64">
         <LoadingSpinner />
@@ -257,7 +350,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
         <div>
           <h1 className="text-2xl font-bold text-gray-800">My Images</h1>
           <p className="text-gray-600">
-            {images.length} image{images.length !== 1 ? 's' : ''}
+            {totalImages} image{totalImages !== 1 ? "s" : ""}
             {selectedImages.size > 0 && ` • ${selectedImages.size} selected`}
           </p>
         </div>
@@ -269,8 +362,11 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
               <button
                 onClick={handleSelectAll}
                 className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors"
+                disabled={images.length === 0}
               >
-                {selectedImages.size === images.length ? "Deselect All" : "Select All"}
+                {selectedImages.size === images.length
+                  ? "Deselect All"
+                  : "Select All"}
               </button>
               <button
                 onClick={handleDeleteSelected}
@@ -280,11 +376,13 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                 Delete Selected
               </button>
               <button
-                onClick={() => setState(prev => ({ 
-                  ...prev, 
-                  selectionMode: false,
-                  selectedImages: new Set()
-                }))}
+                onClick={() =>
+                  setState((prev) => ({
+                    ...prev,
+                    selectionMode: false,
+                    selectedImages: new Set(),
+                  }))
+                }
                 className="p-1 text-gray-600 hover:text-gray-800"
               >
                 <X className="h-5 w-5" />
@@ -292,8 +390,11 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
             </div>
           ) : (
             <button
-              onClick={() => setState(prev => ({ ...prev, selectionMode: true }))}
+              onClick={() =>
+                setState((prev) => ({ ...prev, selectionMode: true }))
+              }
               className="flex items-center space-x-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors"
+              disabled={images.length === 0}
             >
               <CheckSquare className="h-5 w-5" />
               <span>Select</span>
@@ -313,8 +414,8 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
         </div>
       </div>
 
-      {/* Gallery - Always grid view */}
-      {images.length === 0 ? (
+      {/* Gallery */}
+      {images.length === 0 && !loading ? (
         <div className="text-center py-16 bg-gradient-to-br from-gray-50 to-white rounded-2xl">
           <div className="inline-block p-6 bg-gradient-to-br from-primary-50 to-primary-100 rounded-full mb-4">
             <Upload className="h-16 w-16 text-primary-500" />
@@ -327,31 +428,51 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
           </p>
         </div>
       ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={images.map((img) => img._id)}
-            strategy={rectSortingStrategy}
+        <>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
           >
-            {/* Fixed grid layout without view mode toggle */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {images.map((image) => (
-                <SortableImageCard
-                  key={image._id}
-                  id={image._id}
-                  image={image}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  onSelect={handleSelectImage}
-                  isSelected={selectedImages.has(image._id)}
-                />
-              ))}
+            <SortableContext
+              items={images.map((img) => img._id)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {images.map((image) => (
+                  <SortableImageCard
+                    key={image._id}
+                    id={image._id}
+                    image={image}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onSelect={handleSelectImage}
+                    isSelected={selectedImages.has(image._id)}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+
+          {/* Loading more indicator */}
+          {loadingMore && (
+            <div className="flex justify-center py-8">
+              <LoadingSpinner />
             </div>
-          </SortableContext>
-        </DndContext>
+          )}
+
+          {/* Load more trigger element */}
+          {state.hasMore && !loadingMore && images.length > 0 && (
+            <div ref={loadMoreRef} className="h-10" />
+          )}
+
+          {/* End of list message */}
+          {!state.hasMore && images.length > 0 && (
+            <div className="text-center py-6 text-gray-500">
+              <p>You've seen all {totalImages} images</p>
+            </div>
+          )}
+        </>
       )}
 
       {/* Edit Modal - Only show if using internal state */}
@@ -359,7 +480,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
         <EditModal
           isOpen={!!editingImage}
           image={editingImage}
-          onClose={() => setState(prev => ({ ...prev, editingImage: null }))}
+          onClose={() => setState((prev) => ({ ...prev, editingImage: null }))}
           onSuccess={handleEditSuccess}
         />
       )}

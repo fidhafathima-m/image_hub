@@ -69,8 +69,12 @@ export interface DnDEvent {
 export interface ImageGalleryState {
   images: Image[];
   loading: boolean;
+  loadingMore: boolean;
   selectedImages: Set<string>;
   selectionMode: boolean;
   editingImage: Image | null;
   rearranged: boolean;
+  page: number;
+  hasMore: boolean;
+  totalImages: number;
 }

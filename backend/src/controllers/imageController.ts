@@ -10,26 +10,43 @@ import {
   MulterFile,
 } from "../types/index.js";
 
-export const getImages = async (
-  req: AuthRequest,
-  res: Response
-): Promise<void> => {
-  try {
-    if (!req.user?._id) {
-      res.status(401).json({ error: "User not authenticated" });
-      return;
+export const getImages = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        if (!req.user?._id) {
+            res.status(401).json({ error: "User not authenticated" });
+            return;
+        }
+
+        const page = Math.max(1, Number(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 10));
+        const skip = (page - 1) * limit;
+
+        const [images, total] = await Promise.all([
+            Image.find({ user: req.user._id })
+                .sort({ order: 1, createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            Image.countDocuments({ user: req.user._id })
+        ]);
+
+        const totalPages = Math.ceil(total / limit);
+        const hasMore = page < totalPages;
+
+        res.json({
+            success: true,
+            images,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages,
+                hasMore
+            }
+        });
+    } catch (error: unknown) {
+        console.error("Get images error: ", error);
+        res.status(500).json({ error: "Server error" });
     }
-
-    const images = await Image.find({ user: req.user._id }).sort({
-      order: 1,
-      createdAt: -1,
-    });
-
-    res.json(images);
-  } catch (error: unknown) {
-    console.error("Get images error: ", error);
-    res.status(500).json({ error: "Server error" });
-  }
 };
 
 export const uploadImage = async (
@@ -434,7 +451,7 @@ export const getImageStats = async (
       success: true,
       stats: {
         ...result,
-        totalSizeMB: result.totalSizeMB ?? 0
+        totalSizeMB: result.totalSizeMB ?? 0,
       },
     });
   } catch (error: unknown) {

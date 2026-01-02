@@ -72,8 +72,15 @@ export interface ImageResponse {
 }
 
 export interface ImagesResponse {
-  message?: string;
-  images: ImageResponse[];
+    success: boolean;
+    images: ImageResponse[];
+    pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+        hasMore: boolean;
+    };
 }
 
 export interface ApiError {
