@@ -5,6 +5,10 @@ import {
     ImageResponse,
     ApiError
 } from '../types/api';
+import { Image } from '../types/index.js';
+
+// Add Cloudinary configuration
+const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
 
 export const imagesAPI = {
     getImages: async (): Promise<ImageResponse[]> => {
@@ -98,6 +102,19 @@ export const imagesAPI = {
         }
     },
 
+    bulkDeleteImages: async (imageIds: string[]): Promise<{ message: string; deletedCount: number }> => {
+        try {
+            const response = await axiosInstance.post('/images/bulk-delete', { imageIds });
+            return response.data;
+        } catch (error: any) {
+            throw {
+                message: error.response?.data?.error || 'Failed to delete images',
+                error: error.response?.data,
+                status: error.response?.status
+            } as ApiError;
+        }
+    },
+
     rearrangeImages: async (imageOrder: string[]): Promise<{ message: string }> => {
         try {
             const response = await axiosInstance.put('/images/rearrange/order', {
@@ -113,34 +130,58 @@ export const imagesAPI = {
         }
     },
 
-    getImageUrl: (fileName: string): string => {
-        return `${BASE_URL}/uploads/${fileName}`;
-    },
-
-    // Optional: Get image by ID
-    getImageById: async (id: string): Promise<ImageResponse> => {
-        try {
-            // If you have a GET /images/:id endpoint
-            const response = await axiosInstance.get(`/images/${id}`);
-            return response.data;
-        } catch (error: any) {
-            throw {
-                message: error.response?.data?.error || 'Failed to fetch image',
-                error: error.response?.data,
-                status: error.response?.status
-            } as ApiError;
+    // Updated: Generate Cloudinary URL with optimizations
+    getImageUrl: (image: Image): string => {
+        // If we have a publicId (Cloudinary), use optimized URL
+        if (image.publicId && CLOUDINARY_CLOUD_NAME) {
+            return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/w_1200,h_1200,c_limit,q_auto,f_auto/${image.publicId}`;
         }
+        
+        // Fallback to local URL
+        return `${BASE_URL}${image.url}`;
     },
 
-    // Optional: Search images
-    searchImages: async (query: string): Promise<ImageResponse[]> => {
+    // Get thumbnail URL for Cloudinary
+    getThumbnailUrl: (image: Image): string => {
+        // If we have a publicId (Cloudinary), use thumbnail URL
+        if (image.publicId && CLOUDINARY_CLOUD_NAME) {
+            return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/w_300,h_300,c_fill,q_auto,f_webp/${image.publicId}`;
+        }
+        
+        // If thumbnailUrl exists, use it
+        if (image.thumbnailUrl) {
+            return image.thumbnailUrl;
+        }
+        
+        // Fallback to regular image URL
+        return imagesAPI.getImageUrl(image);
+    },
+
+    // Get optimized URL with custom transformations
+    getOptimizedImageUrl: (image: Image, width?: number, height?: number): string => {
+        if (image.publicId && CLOUDINARY_CLOUD_NAME) {
+            const transformations = [];
+            
+            if (width) transformations.push(`w_${width}`);
+            if (height) transformations.push(`h_${height}`);
+            transformations.push('c_limit,q_auto,f_auto');
+            
+            const transformStr = transformations.join(',');
+            return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/${transformStr}/${image.publicId}`;
+        }
+        
+        // Fallback to original URL
+        return image.url;
+    },
+
+    // Get image stats
+    getImageStats: async (): Promise<any> => {
         try {
-            // If you have a search endpoint
-            const response = await axiosInstance.get(`/images/search?q=${encodeURIComponent(query)}`);
+            const response = await axiosInstance.get('/images/stats');
             return response.data;
         } catch (error: any) {
             throw {
-                message: error.response?.data?.error || 'Failed to search images',
+                message: error.response?.data?.error || 'Failed to fetch image stats',
                 error: error.response?.data,
                 status: error.response?.status
             } as ApiError;
@@ -148,20 +189,9 @@ export const imagesAPI = {
     }
 };
 
-// Export type for images API
-export type ImagesAPI = typeof imagesAPI;
-
-// Helper function to create form data for single image upload
-export const createImageFormData = (title: string, image: File): FormData => {
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('image', image);
-    return formData;
-};
-
-// Helper function to validate image file
+// Helper function to validate image file for Cloudinary
 export const validateImageFile = (file: File): { valid: boolean; error?: string } => {
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 10 * 1024 * 1024; // 10MB (Cloudinary allows more)
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
 
     if (file.size > maxSize) {
@@ -181,12 +211,13 @@ export const validateImageFile = (file: File): { valid: boolean; error?: string 
     return { valid: true };
 };
 
-// Helper function to get image preview URL
-export const getImagePreviewUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target?.result as string);
-        reader.onerror = () => reject(new Error('Failed to read file'));
-        reader.readAsDataURL(file);
-    });
+// Helper function to get file size in readable format
+export const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };

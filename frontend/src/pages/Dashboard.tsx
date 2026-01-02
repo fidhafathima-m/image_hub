@@ -53,43 +53,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      {/* Dashboard Header */}
-      <div className="bg-gradient-to-r from-primary-600 to-primary-800 rounded-2xl p-6 text-white">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Image Dashboard</h1>
-            <p className="text-primary-100">
-              Manage and organize your image collection
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              console.log("Upload button clicked!");
-              setShowUploadModal(true);
-            }}
-            className="flex items-center space-x-2 px-6 py-3 bg-white text-primary-600 font-medium rounded-lg hover:bg-gray-100 transition-colors shadow-lg"
-          >
-            <Plus className="h-5 w-5" />
-            <span>Upload Image</span>
-          </button>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-            <div className="text-2xl font-bold">{stats.totalImages}</div>
-            <div className="text-sm text-primary-100">Total Images</div>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-            <div className="text-2xl font-bold">{stats.totalSize}</div>
-            <div className="text-sm text-primary-100">Total Size</div>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-            <div className="text-2xl font-bold">{stats.recentUploads}</div>
-            <div className="text-sm text-primary-100">Recent Uploads</div>
-          </div>
-        </div>
-      </div>
 
       {/* Content Area */}
       <div className="bg-white rounded-xl shadow-lg p-6">

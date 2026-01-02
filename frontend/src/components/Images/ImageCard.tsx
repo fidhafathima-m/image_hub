@@ -4,6 +4,7 @@ import {
   Trash2,
   Image as ImageIcon,
   GripVertical,
+  ExternalLink,
 } from "lucide-react";
 import { imagesAPI } from "../../api/images";
 import toast from "react-hot-toast";
@@ -20,6 +21,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
 }) => {
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [imageError, setImageError] = useState<boolean>(false);
 
   const handleDelete = async (): Promise<void> => {
     if (isDeleting) return;
@@ -46,7 +48,25 @@ const ImageCard: React.FC<ImageCardProps> = ({
     onEdit(image);
   };
 
-  const imageUrl = imagesAPI.getImageUrl(image.fileName);
+  const handleImageError = (): void => {
+    setImageError(true);
+  };
+
+  // Get image URL - use thumbnail for better performance
+  const imageUrl = imagesAPI.getThumbnailUrl(image);
+  
+  // Get original image URL for lightbox/preview
+  const originalImageUrl = imagesAPI.getImageUrl(image);
+
+  // Format file size if available
+  const fileSize = image.bytes 
+    ? `${(image.bytes / (1024 * 1024)).toFixed(2)} MB`
+    : image.size
+    ? `${(image.size / (1024 * 1024)).toFixed(2)} MB`
+    : 'Unknown size';
+
+  // Get image format
+  const imageFormat = image.format || image.mimetype?.split('/')[1]?.toUpperCase() || 'Image';
 
   return (
     <div
@@ -89,13 +109,14 @@ const ImageCard: React.FC<ImageCardProps> = ({
 
       {/* Image */}
       <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
-        {imageUrl ? (
+        {!imageError ? (
           <>
             <img
               src={imageUrl}
               alt={image.title}
               className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
               loading="lazy"
+              onError={handleImageError}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
           </>
@@ -103,7 +124,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
           <div className="w-full h-full flex flex-col items-center justify-center p-4">
             <ImageIcon className="h-12 w-12 text-gray-400 mb-2" />
             <span className="text-xs text-gray-500 text-center truncate w-full">
-              {image.fileName}
+              {image.title}
             </span>
           </div>
         )}
@@ -111,18 +132,34 @@ const ImageCard: React.FC<ImageCardProps> = ({
 
       {/* Info */}
       <div className="p-3 border-t">
-        <h3 className="font-medium text-gray-800 truncate" title={image.title}>
+        <h3 className="font-medium text-gray-800 truncate mb-1" title={image.title}>
           {image.title}
         </h3>
-        <div className="flex justify-between items-center mt-2">
-          <p className="text-xs text-gray-500">
-            {new Date(image.createdAt).toLocaleDateString()}
-          </p>
-          {image.size && (
-            <span className="text-xs text-gray-500">
-              {(image.size / 1024).toFixed(1)} KB
-            </span>
-          )}
+        
+        <div className="flex justify-between items-center text-xs text-gray-500">
+          <div className="space-y-1">
+            <p className="truncate">
+              {new Date(image.createdAt).toLocaleDateString()}
+            </p>
+            <div className="flex items-center space-x-2">
+              <span className="px-1.5 py-0.5 bg-gray-100 rounded text-xs">
+                {imageFormat}
+              </span>
+              <span>{fileSize}</span>
+            </div>
+          </div>
+          
+          {/* Open original image button */}
+          <a
+            href={originalImageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-1 hover:bg-gray-100 rounded transition-colors"
+            onClick={(e) => e.stopPropagation()}
+            title="Open original image"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </a>
         </div>
       </div>
 

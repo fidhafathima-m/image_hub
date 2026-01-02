@@ -177,34 +177,33 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   };
 
   const handleDeleteSelected = async (): Promise<void> => {
-    const { selectedImages, images } = state;
-    
-    if (selectedImages.size === 0) return;
+  const { selectedImages, images } = state;
+  
+  if (selectedImages.size === 0) return;
 
-    if (window.confirm(`Are you sure you want to delete ${selectedImages.size} selected image${selectedImages.size === 1 ? '' : 's'}?`)) {
-      try {
-        const deletePromises = Array.from(selectedImages).map((id) =>
-          imagesAPI.deleteImage(id)
-        );
+  if (window.confirm(`Are you sure you want to delete ${selectedImages.size} selected image${selectedImages.size === 1 ? '' : 's'}?`)) {
+    try {
+      // Use bulk delete API
+      const imageIds = Array.from(selectedImages);
+      const result = await imagesAPI.bulkDeleteImages(imageIds);
 
-        await Promise.all(deletePromises);
-
-        toast.success(`${selectedImages.size} image${selectedImages.size === 1 ? '' : 's'} deleted successfully`);
-        setState(prev => ({ 
-          ...prev, 
-          selectedImages: new Set(),
-          selectionMode: false 
-        }));
-        fetchImages();
-        // Call onDelete callback if provided
-        if (onDelete) {
-          onDelete();
-        }
-      } catch (error: any) {
-        toast.error(error.message || "Failed to delete images");
+      toast.success(result.message || `${selectedImages.size} images deleted successfully`);
+      setState(prev => ({ 
+        ...prev, 
+        selectedImages: new Set(),
+        selectionMode: false 
+      }));
+      fetchImages();
+      
+      // Call onDelete callback if provided
+      if (onDelete) {
+        onDelete();
       }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete images");
     }
-  };
+  }
+};
 
   const handleSaveOrder = async (): Promise<void> => {
     try {

@@ -41,12 +41,19 @@ export interface AuthResponse {
 }
 
 // Image Types
+// Update Image interface for Cloudinary
 export interface Image {
   _id: string;
   title: string;
   url: string;
-  fileName: string;
+  publicId?: string; // Cloudinary public ID
+  thumbnailUrl?: string; // Cloudinary thumbnail
+  format?: string;
+  bytes?: number;
+  width?: number;
+  height?: number;
   originalName?: string;
+  fileName?: string; // Keep for backward compatibility
   size?: number;
   mimetype?: string;
   order: number;

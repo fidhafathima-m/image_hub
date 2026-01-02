@@ -2,12 +2,19 @@ import { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import { Transform } from '@dnd-kit/utilities';
 
 // Image Types
+// Update Image interface for Cloudinary
 export interface Image {
   _id: string;
   title: string;
   url: string;
-  fileName: string;
+  publicId?: string | undefined; // Cloudinary public ID
+  thumbnailUrl?: string; // Cloudinary thumbnail
+  format?: string;
+  bytes?: number;
+  width?: number;
+  height?: number;
   originalName?: string;
+  fileName?: string; // Keep for backward compatibility
   size?: number;
   mimetype?: string;
   order: number;

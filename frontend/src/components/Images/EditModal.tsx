@@ -19,7 +19,7 @@ const EditModal: React.FC<EditModalProps> = ({
   useEffect(() => {
     if (image) {
       setTitle(image.title);
-      setPreview(imagesAPI.getImageUrl(image.fileName));
+      setPreview(imagesAPI.getImageUrl(image));
       setFile(null);
     }
   }, [image]);

@@ -179,11 +179,11 @@ const UploadModal: React.FC<UploadModalProps> = ({
             >
               <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-600 mb-2">
-                Click to select {isBulkUpload ? 'images' : 'an image'} or drag and drop
+                Click to select {isBulkUpload ? 'images' : 'an image'}
               </p>
               <p className="text-sm text-gray-500">
                 {isBulkUpload 
-                  ? 'Multiple images allowed (JPEG, PNG, GIF, WebP)' 
+                  ? 'Multiple images (upto 100 images) allowed (JPEG, PNG, GIF, WebP)' 
                   : 'Single image only (JPEG, PNG, GIF, WebP)'}
               </p>
               <input
