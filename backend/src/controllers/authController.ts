@@ -1,27 +1,27 @@
 import { Request, Response } from "express";
-import { AuthService } from "../services/auth.service";
 import { IUserService } from "../interfaces/services/IUserService";
+import { ErrorMessages, HttpStatus, SuccessMessages } from "../constants";
 
 export class AuthController {
-  private authService: IUserService;
+  private _authService: IUserService;
 
   constructor(authService: IUserService) {
-    this.authService = authService;
+    this._authService = authService;
   }
 
   register = async (req: Request, res: Response): Promise<void> => {
     try {
       const { userName, email, phoneNumber, password } = req.body;
 
-      const { user, token } = await this.authService.register({
+      const { user, token } = await this._authService.register({
         userName,
         email,
         phoneNumber,
         password,
       });
 
-      res.status(200).json({
-        message: "User registered successfully!",
+      res.status(HttpStatus.OK).json({
+        message: SuccessMessages.REGISTER_SUCCESS,
         token,
         user: {
           id: user._id,
@@ -32,8 +32,10 @@ export class AuthController {
       });
     } catch (error: any) {
       console.error("Registration error:", error);
-      const status = error.message.includes("already exists") ? 400 : 500;
-      res.status(status).json({ error: error.message || "Server error" });
+      const status = error.message.includes(ErrorMessages.USER_ALREADY_EXISTS)
+        ? HttpStatus.BAD_REQUEST
+        : HttpStatus.INTERNAL_SERVER_ERROR;
+      res.status(status).json({ error: error.message || ErrorMessages.SERVER_ERROR });
     }
   };
 
@@ -41,10 +43,10 @@ export class AuthController {
     try {
       const { email, password } = req.body;
 
-      const { user, token } = await this.authService.login(email, password);
+      const { user, token } = await this._authService.login(email, password);
 
       res.json({
-        message: "Logged In successfully!",
+        message: SuccessMessages.LOGIN_SUCCESS,
         token,
         user: {
           id: user._id,
@@ -55,8 +57,10 @@ export class AuthController {
       });
     } catch (error: any) {
       console.error("Login error:", error);
-      const status = error.message.includes("Invalid credentials") ? 400 : 500;
-      res.status(status).json({ error: error.message || "Server error" });
+      const status = error.message.includes(ErrorMessages.INVALID_CREDENTIALS)
+        ? HttpStatus.BAD_REQUEST
+        : HttpStatus.INTERNAL_SERVER_ERROR;
+      res.status(status).json({ error: error.message || ErrorMessages.SERVER_ERROR });
     }
   };
 
@@ -64,22 +68,26 @@ export class AuthController {
     try {
       const { email } = req.body;
 
-      const { resetToken, user } = await this.authService.forgotPassword(email);
+      const { resetToken, user } = await this._authService.forgotPassword(
+        email
+      );
 
       if (process.env.NODE_ENV === "development") {
         console.log(
-          "🔗 Reset link:",
+          "Reset link:",
           `${process.env.FRONTEND_URL}/reset-password/${resetToken}`
         );
         res.json({ message: "Reset link logged in console (dev mode)" });
         return;
       }
 
-      res.json({ message: "Password reset mail sent" });
+      res.json({ message: SuccessMessages.PASSWORD_RESET_SENT });
     } catch (error: any) {
       console.error("Forget Password error:", error);
-      const status = error.message.includes("Invalid credentials") ? 400 : 500;
-      res.status(status).json({ error: error.message || "Server error" });
+      const status = error.message.includes(ErrorMessages.INVALID_CREDENTIALS)
+        ? HttpStatus.BAD_REQUEST
+        : HttpStatus.INTERNAL_SERVER_ERROR;
+      res.status(status).json({ error: error.message || ErrorMessages.SERVER_ERROR });
     }
   };
 
@@ -87,15 +95,15 @@ export class AuthController {
     try {
       const { token, password } = req.body;
 
-      await this.authService.resetPassword(token, password);
+      await this._authService.resetPassword(token, password);
 
-      res.json({ message: "Password reset successful!" });
+      res.json({ message: SuccessMessages.PASSWORD_RESET_SUCCESS });
     } catch (error: any) {
       console.error("Reset Password error:", error);
-      const status = error.message.includes("Invalid or expired token")
-        ? 400
-        : 500;
-      res.status(status).json({ error: error.message || "Server error" });
+      const status = error.message.includes(ErrorMessages.INVALID_TOKEN)
+        ? HttpStatus.BAD_REQUEST
+        : HttpStatus.INTERNAL_SERVER_ERROR;
+      res.status(status).json({ error: error.message || ErrorMessages.SERVER_ERROR });
     }
   };
 }

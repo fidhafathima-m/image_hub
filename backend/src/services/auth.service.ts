@@ -6,10 +6,10 @@ import { IUser } from '../interfaces/IUser';
 import { IUserRepository } from '../interfaces/repositories/IUserRepository';
 
 export class AuthService {
-  private userRepository: IUserRepository;
+  private _userRepository: IUserRepository;
 
   constructor(userRepository: IUserRepository) {
-    this.userRepository = userRepository;
+    this._userRepository = userRepository;
     if (process.env.SENDGRID_API_KEY) {
       sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     }
@@ -22,13 +22,13 @@ export class AuthService {
     password: string;
   }): Promise<{ user: IUser; token: string }> {
     // Check if user exists
-    const existingUser = await this.userRepository.findByEmail(userData.email);
+    const existingUser = await this._userRepository.findByEmail(userData.email);
     if (existingUser) {
       throw new Error('User already exists, please login.');
     }
 
     // Create user
-    const user = await this.userRepository.create({
+    const user = await this._userRepository.create({
       ...userData,
       email: userData.email.toLowerCase()
     });
@@ -46,7 +46,7 @@ export class AuthService {
   }
 
   async login(email: string, password: string): Promise<{ user: IUser; token: string }> {
-    const user = await this.userRepository.findByEmail(email.toLowerCase());
+    const user = await this._userRepository.findByEmail(email.toLowerCase());
     if (!user) {
       throw new Error('Invalid credentials');
     }
@@ -69,7 +69,7 @@ export class AuthService {
   }
 
   async forgotPassword(email: string): Promise<{ resetToken: string; user: IUser }> {
-    const user = await this.userRepository.findByEmail(email.toLowerCase());
+    const user = await this._userRepository.findByEmail(email.toLowerCase());
     if (!user) {
       throw new Error('Invalid credentials');
     }
@@ -80,7 +80,7 @@ export class AuthService {
 
     const hashToken = createHash('sha256').update(resetToken).digest('hex');
 
-    await this.userRepository.update(user._id.toString(), {
+    await this._userRepository.update(user._id.toString(), {
       resetPasswordToken: hashToken,
       resetPasswordExpires: new Date(resetTokenExpiry)
     });
@@ -113,12 +113,12 @@ export class AuthService {
   async resetPassword(token: string, password: string): Promise<void> {
     const hashToken = createHash('sha256').update(token).digest('hex');
     
-    const user = await this.userRepository.findByResetToken(hashToken);
+    const user = await this._userRepository.findByResetToken(hashToken);
     if (!user) {
       throw new Error('Invalid or expired token');
     }
 
-    await this.userRepository.update(user._id.toString(), {
+    await this._userRepository.update(user._id.toString(), {
       password,
       resetPasswordToken: undefined,
       resetPasswordExpires: undefined

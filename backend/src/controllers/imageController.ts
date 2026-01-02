@@ -1,26 +1,26 @@
 import { Response } from "express";
 import { AuthRequest } from "../types/index";
 import { IImageService } from "../interfaces/services/IImageService";
-import { IImage } from "../interfaces/IImage";
+import { ErrorMessages, HttpStatus, SuccessMessages } from "../constants";
 
 export class ImageController {
-  private imageService: IImageService;
+  private _imageService: IImageService;
 
   constructor(imageService: IImageService) {
-    this.imageService = imageService;
+    this._imageService = imageService;
   }
 
   getImages = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       if (!req.user?._id) {
-        res.status(401).json({ error: "User not authenticated" });
+        res.status(HttpStatus.UNAUTHORIZED).json({ error: ErrorMessages.UNAUTHORIZED});
         return;
       }
 
       const page = Math.max(1, Number(req.query.page) || 1);
       const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 10));
 
-      const { images, total } = await this.imageService.getImages(
+      const { images, total } = await this._imageService.getImages(
         req.user._id.toString(),
         page,
         limit
@@ -42,7 +42,7 @@ export class ImageController {
       });
     } catch (error: any) {
       console.error("Get images error:", error);
-      res.status(500).json({ error: error.message || "Server error" });
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: error.message || ErrorMessages.SERVER_ERROR });
     }
   };
 
@@ -51,28 +51,28 @@ export class ImageController {
       const { title } = req.body;
 
       if (!req.user?._id) {
-        res.status(401).json({ error: "User not authenticated" });
+        res.status(HttpStatus.UNAUTHORIZED).json({ error: ErrorMessages.UNAUTHORIZED});
         return;
       }
 
       if (!req.file) {
-        res.status(400).json({ error: "No file uploaded" });
+        res.status(HttpStatus.BAD_REQUEST).json({ error: ErrorMessages.NO_FILE_UPLOADED });
         return;
       }
 
-      const image = await this.imageService.uploadImage(
+      const image = await this._imageService.uploadImage(
         req.user._id.toString(),
         req.file,
         title
       );
 
-      res.status(201).json({
-        message: "Image uploaded successfully",
+      res.status(HttpStatus.CREATED).json({
+        message: SuccessMessages.IMAGE_UPLOADED,
         image,
       });
     } catch (error: any) {
       console.error("Upload Image error:", error);
-      res.status(500).json({ error: error.message || "Server error" });
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: error.message || ErrorMessages.SERVER_ERROR});
     }
   };
 
@@ -82,27 +82,27 @@ export class ImageController {
       const files = req.files as any[];
 
       if (!req.user?._id) {
-        res.status(401).json({ error: "User not authenticated" });
+        res.status(HttpStatus.UNAUTHORIZED).json({ error: ErrorMessages.UNAUTHORIZED});
         return;
       }
 
       if (!files || files.length === 0) {
-        res.status(400).json({ error: "No files uploaded" });
+        res.status(HttpStatus.BAD_REQUEST).json({ error: ErrorMessages.NO_FILE_UPLOADED });
         return;
       }
 
       if (!titles || titles.length !== files.length) {
-        res.status(400).json({ error: "Title count must match file count" });
+        res.status(HttpStatus.BAD_REQUEST).json({ error: ErrorMessages.TITLE_COUNT_MISMATCH });
         return;
       }
 
-      const images = await this.imageService.bulkUploadImages(
+      const images = await this._imageService.bulkUploadImages(
         req.user._id.toString(),
         files,
         titles
       );
 
-      res.status(201).json({
+      res.status(HttpStatus.CREATED).json({
         message: `${files.length} images uploaded`,
         images,
       });
@@ -114,7 +114,7 @@ export class ImageController {
         // You might want to add cleanup logic here if needed
       }
 
-      res.status(500).json({ error: error.message || "Server error" });
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: error.message || ErrorMessages.SERVER_ERROR});
     }
   };
 
@@ -125,11 +125,11 @@ export class ImageController {
       const file = req.file as any;
 
       if (!req.user?._id) {
-        res.status(401).json({ error: "User not authenticated" });
+        res.status(HttpStatus.UNAUTHORIZED).json({ error: ErrorMessages.UNAUTHORIZED });
         return;
       }
 
-      const image = await this.imageService.updateImage(
+      const image = await this._imageService.updateImage(
         id,
         req.user._id.toString(),
         title,
@@ -137,13 +137,13 @@ export class ImageController {
       );
 
       res.json({
-        message: "Image updated successfully!",
+        message: SuccessMessages.IMAGE_UPDATED,
         image,
       });
     } catch (error: any) {
       console.error("Update image error:", error);
-      const status = error.message.includes("not found") ? 404 : 500;
-      res.status(status).json({ error: error.message || "Server error" });
+      const status = error.message.includes("not found") ? HttpStatus.NOT_FOUND : HttpStatus.INTERNAL_SERVER_ERROR;
+      res.status(status).json({ error: error.message || ErrorMessages.SERVER_ERROR});
     }
   };
 
@@ -152,17 +152,17 @@ export class ImageController {
       const { id } = req.params;
 
       if (!req.user?._id) {
-        res.status(401).json({ error: "User not authenticated" });
+        res.status(HttpStatus.UNAUTHORIZED).json({ error: ErrorMessages.UNAUTHORIZED });
         return;
       }
 
-      await this.imageService.deleteImage(id, req.user._id.toString());
+      await this._imageService.deleteImage(id, req.user._id.toString());
 
-      res.json({ message: "Image deleted successfully!" });
+      res.json({ message: SuccessMessages.IMAGE_DELETED });
     } catch (error: any) {
       console.error("Delete image error:", error);
-      const status = error.message.includes("not found") ? 404 : 500;
-      res.status(status).json({ error: error.message || "Server error" });
+      const status = error.message.includes("not found") ? HttpStatus.NOT_FOUND : HttpStatus.INTERNAL_SERVER_ERROR;
+      res.status(status).json({ error: error.message || ErrorMessages.SERVER_ERROR});
     }
   };
 
@@ -171,22 +171,22 @@ export class ImageController {
       const { imageIds } = req.body;
 
       if (!req.user?._id) {
-        res.status(401).json({ error: "User not authenticated" });
+        res.status(HttpStatus.UNAUTHORIZED).json({ error: ErrorMessages.UNAUTHORIZED });
         return;
       }
 
       if (!Array.isArray(imageIds) || imageIds.length === 0) {
-        res.status(400).json({ error: "Invalid image IDs array" });
+        res.status(HttpStatus.BAD_REQUEST).json({ error: ErrorMessages.INVALID_IMAGE_IDS});
         return;
       }
 
-      const deletedCount = await this.imageService.bulkDeleteImages(
+      const deletedCount = await this._imageService.bulkDeleteImages(
         imageIds,
         req.user._id.toString()
       );
 
       if (deletedCount === 0) {
-        res.status(404).json({ error: "No images found" });
+        res.status(HttpStatus.NOT_FOUND).json({ error: ErrorMessages.IMAGE_NOT_FOUND });
         return;
       }
 
@@ -196,7 +196,7 @@ export class ImageController {
       });
     } catch (error: any) {
       console.error("Bulk delete images error:", error);
-      res.status(500).json({ error: error.message || "Server error" });
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: error.message || ErrorMessages.SERVER_ERROR});
     }
   };
 
@@ -205,35 +205,35 @@ export class ImageController {
       const { imageOrder } = req.body;
 
       if (!req.user?._id) {
-        res.status(401).json({ error: "User not authenticated" });
+        res.status(HttpStatus.UNAUTHORIZED).json({ error: ErrorMessages.UNAUTHORIZED });
         return;
       }
 
       if (!Array.isArray(imageOrder)) {
-        res.status(400).json({ error: "Invalid image order array" });
+        res.status(HttpStatus.BAD_REQUEST).json({ error: ErrorMessages.INVALID_IMAGE_ORDERS});
         return;
       }
 
-      await this.imageService.rearrangeImages(
+      await this._imageService.rearrangeImages(
         req.user._id.toString(),
         imageOrder
       );
 
-      res.json({ message: "Images rearranged successfully" });
+      res.json({ message: SuccessMessages.IMAGES_REARRANGED });
     } catch (error: any) {
       console.error("Rearrange image error:", error);
-      res.status(500).json({ error: error.message || "Server error" });
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: error.message || ErrorMessages.SERVER_ERROR});
     }
   };
 
   getImageStats = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       if (!req.user?._id) {
-        res.status(401).json({ error: "User not authenticated" });
+        res.status(HttpStatus.UNAUTHORIZED).json({ error: ErrorMessages.UNAUTHORIZED });
         return;
       }
 
-      const stats = await this.imageService.getImageStats(
+      const stats = await this._imageService.getImageStats(
         req.user._id.toString()
       );
 
@@ -243,7 +243,7 @@ export class ImageController {
       });
     } catch (error: any) {
       console.error("Get image stats error:", error);
-      res.status(500).json({ error: error.message || "Server error" });
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: error.message || ErrorMessages.SERVER_ERROR});
     }
   };
 }

@@ -1,17 +1,16 @@
 import cloudinary from '../config/cloudinary';
-import { ImageRepository } from '../repositories/image.repository';
 import { IImage } from '../interfaces/IImage';
 import { IImageRepository } from '../interfaces/repositories/IImageRepository';
 
 export class ImageService {
-  private imageRepository: IImageRepository;
+  private _imageRepository: IImageRepository;
 
   constructor(imageRepository: IImageRepository) {
-    this.imageRepository = imageRepository;
+    this._imageRepository = imageRepository;
   }
 
   async getImages(userId: string, page: number = 1, limit: number = 10): Promise<{ images: IImage[]; total: number }> {
-    return this.imageRepository.findByUserId(userId, page, limit);
+    return this._imageRepository.findByUserId(userId, page, limit);
   }
 
   async uploadImage(
@@ -20,7 +19,7 @@ export class ImageService {
     title?: string
   ): Promise<IImage> {
     // Get highest order
-    const highestOrderImage = await this.imageRepository.findHighestOrder(userId);
+    const highestOrderImage = await this._imageRepository.findHighestOrder(userId);
     const order = highestOrderImage ? highestOrderImage.order + 1 : 0;
 
     // Create thumbnail URL
@@ -45,7 +44,7 @@ export class ImageService {
       order
     };
 
-    return this.imageRepository.create(imageData);
+    return this._imageRepository.create(imageData);
   }
 
   async bulkUploadImages(
@@ -53,7 +52,7 @@ export class ImageService {
     files: any[],
     titles: string[]
   ): Promise<IImage[]> {
-    const highestOrderImage = await this.imageRepository.findHighestOrder(userId);
+    const highestOrderImage = await this._imageRepository.findHighestOrder(userId);
     let order = highestOrderImage ? highestOrderImage.order + 1 : 0;
     
     const images: IImage[] = [];
@@ -83,7 +82,7 @@ export class ImageService {
         order
       };
 
-      const image = await this.imageRepository.create(imageData);
+      const image = await this._imageRepository.create(imageData);
       images.push(image);
       order++;
     }
@@ -97,7 +96,7 @@ export class ImageService {
     title?: string,
     file?: any
   ): Promise<IImage> {
-    const image = await this.imageRepository.findById(id);
+    const image = await this._imageRepository.findById(id);
     if (!image || image.user.toString() !== userId) {
       throw new Error('Image not found');
     }
@@ -134,7 +133,7 @@ export class ImageService {
       updateData.height = file.height;
     }
 
-    const updatedImage = await this.imageRepository.update(id, updateData);
+    const updatedImage = await this._imageRepository.update(id, updateData);
     if (!updatedImage) {
       throw new Error('Failed to update image');
     }
@@ -143,7 +142,7 @@ export class ImageService {
   }
 
   async deleteImage(id: string, userId: string): Promise<void> {
-    const image = await this.imageRepository.findById(id);
+    const image = await this._imageRepository.findById(id);
     if (!image || image.user.toString() !== userId) {
       throw new Error('Image not found');
     }
@@ -156,13 +155,13 @@ export class ImageService {
     }
 
     // Delete from database
-    await this.imageRepository.delete(id);
+    await this._imageRepository.delete(id);
   }
 
   async bulkDeleteImages(imageIds: string[], userId: string): Promise<number> {
     // Verify all images belong to user
     const images = await Promise.all(
-      imageIds.map(id => this.imageRepository.findById(id))
+      imageIds.map(id => this._imageRepository.findById(id))
     );
 
     const validImages = images.filter(img => img && img.user.toString() === userId);
@@ -178,13 +177,13 @@ export class ImageService {
     await Promise.all(cloudinaryDeletes);
 
     // Delete from database
-    return this.imageRepository.deleteMany(imageIds);
+    return this._imageRepository.deleteMany(imageIds);
   }
 
   async rearrangeImages(userId: string, imageOrder: Array<{id: string, order: number}>): Promise<void> {
     // Verify all images belong to user
     const images = await Promise.all(
-      imageOrder.map(item => this.imageRepository.findById(item.id))
+      imageOrder.map(item => this._imageRepository.findById(item.id))
     );
 
     const allBelongToUser = images.every(img => img && img.user.toString() === userId);
@@ -192,11 +191,11 @@ export class ImageService {
       throw new Error('Some images do not belong to user');
     }
 
-    await this.imageRepository.updateOrder(imageOrder);
+    await this._imageRepository.updateOrder(imageOrder);
   }
 
   async getImageStats(userId: string): Promise<{ totalSizeMB: number; totalImages: number; totalSize: number; recentUploads: number }> {
-    const stats = await this.imageRepository.getStats(userId);
+    const stats = await this._imageRepository.getStats(userId);
     
     return {
       ...stats,
