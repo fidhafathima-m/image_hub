@@ -1,461 +1,249 @@
 import { Response } from "express";
-import Image, { IImage } from "../models/ImageSchema.js";
-import cloudinary from "../config/cloudinary.js";
-import {
-  AuthRequest,
-  ImageUploadBody,
-  BulkUploadBody,
-  UpdateImageBody,
-  RearrangeImagesBody,
-  MulterFile,
-} from "../types/index.js";
+import { AuthRequest } from "../types/index";
+import { IImageService } from "../interfaces/services/IImageService";
+import { ErrorMessages, HttpStatus, SuccessMessages } from "../constants";
 
-export const getImages = async (req: AuthRequest, res: Response): Promise<void> => {
+export class ImageController {
+  private _imageService: IImageService;
+
+  constructor(imageService: IImageService) {
+    this._imageService = imageService;
+  }
+
+  getImages = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        if (!req.user?._id) {
-            res.status(401).json({ error: "User not authenticated" });
-            return;
-        }
-
-        const page = Math.max(1, Number(req.query.page) || 1);
-        const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 10));
-        const skip = (page - 1) * limit;
-
-        const [images, total] = await Promise.all([
-            Image.find({ user: req.user._id })
-                .sort({ order: 1, createdAt: -1 })
-                .skip(skip)
-                .limit(limit),
-            Image.countDocuments({ user: req.user._id })
-        ]);
-
-        const totalPages = Math.ceil(total / limit);
-        const hasMore = page < totalPages;
-
-        res.json({
-            success: true,
-            images,
-            pagination: {
-                page,
-                limit,
-                total,
-                totalPages,
-                hasMore
-            }
-        });
-    } catch (error: unknown) {
-        console.error("Get images error: ", error);
-        res.status(500).json({ error: "Server error" });
-    }
-};
-
-export const uploadImage = async (
-  req: AuthRequest,
-  res: Response
-): Promise<void> => {
-  try {
-    const { title } = req.body;
-
-    if (!req.user?._id) {
-      res.status(401).json({ error: "User not authenticated" });
-      return;
-    }
-
-    if (!req.file) {
-      res.status(400).json({ error: "No file uploaded" });
-      return;
-    }
-
-    const file = req.file as any;
-
-    // ✅ multer-storage-cloudinary fields
-    const publicId = file.filename;
-    const url = file.path;
-    const format = file.mimetype.split("/")[1];
-    const bytes = file.size;
-
-    // Get highest order
-    const highestOrderImage = await Image.findOne({ user: req.user._id }).sort({
-      order: -1,
-    });
-    const order = highestOrderImage ? highestOrderImage.order + 1 : 0;
-
-    const thumbnailUrl = cloudinary.url(publicId, {
-      width: 300,
-      height: 300,
-      crop: "fill",
-      quality: "auto",
-      format: "webp",
-    });
-
-    const image = new Image({
-      user: req.user._id,
-      title,
-      publicId,
-      url,
-      thumbnailUrl,
-      format,
-      bytes,
-      width: file.width,
-      height: file.height,
-      order,
-    });
-
-    await image.save();
-
-    res.status(201).json({
-      message: "Image uploaded successfully",
-      image,
-    });
-  } catch (error) {
-    console.error("Upload Image error:", error);
-    res.status(500).json({ error: "Server error" });
-  }
-};
-
-// Bulk upload with Cloudinary
-export const bulkUploadImages = async (
-  req: AuthRequest,
-  res: Response
-): Promise<void> => {
-  try {
-    const { titles } = req.body as BulkUploadBody;
-    const files = req.files as any[];
-
-    if (!req.user?._id) {
-      res.status(401).json({ error: "User not authenticated" });
-      return;
-    }
-
-    if (!files || files.length === 0) {
-      res.status(400).json({ error: "No files uploaded" });
-      return;
-    }
-
-    if (!titles || titles.length !== files.length) {
-      res.status(400).json({ error: "Title count must match file count" });
-      return;
-    }
-
-    // Get highest order
-    const highestOrderImage = await Image.findOne({ user: req.user._id }).sort({
-      order: -1,
-    });
-
-    let order = highestOrderImage ? highestOrderImage.order + 1 : 0;
-    const images: IImage[] = [];
-
-    // Process each file
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const title = titles[i];
-
-      // Create thumbnail URL
-      const thumbnailUrl = cloudinary.url(file.public_id, {
-        width: 300,
-        height: 300,
-        crop: "fill",
-        quality: "auto",
-        format: "webp",
-      });
-
-      const image = new Image({
-        user: req.user._id,
-        title,
-        publicId: file.filename,
-        url: file.path,
-        format: file.mimetype.split("/")[1],
-        bytes: file.size,
-        width: file.width,
-        height: file.height,
-        order,
-      });
-
-      await image.save();
-      images.push(image);
-    }
-
-    res.status(201).json({
-      message: `${files.length} images uploaded`,
-      images,
-    });
-  } catch (error: unknown) {
-    console.error("Bulk upload images error: ", error);
-
-    // Clean up any uploaded files on Cloudinary if error occurs
-    if (req.files && Array.isArray(req.files)) {
-      const cleanupPromises = (req.files as any[]).map((file) =>
-        cloudinary.uploader.destroy(file.filename).catch((cleanupError) => {
-          console.error("Failed to cleanup Cloudinary file:", cleanupError);
-        })
-      );
-      await Promise.all(cleanupPromises);
-    }
-
-    res.status(500).json({ error: "Server error" });
-  }
-};
-
-// Update image (title and/or file) with Cloudinary
-export const updateImage = async (
-  req: AuthRequest,
-  res: Response
-): Promise<void> => {
-  try {
-    const { id } = req.params;
-    const { title } = req.body as UpdateImageBody;
-    const file = req.file as any;
-
-    if (!req.user?._id) {
-      res.status(401).json({ error: "User not authenticated" });
-      return;
-    }
-
-    // Find image
-    const image = await Image.findOne({ _id: id, user: req.user._id });
-
-    if (!image) {
-      res.status(404).json({ error: "Image not found" });
-      return;
-    }
-
-    // If new file uploaded
-    if (file) {
-      // Delete old image from Cloudinary
-      try {
-        await cloudinary.uploader.destroy(image.publicId);
-      } catch (error) {
-        console.error("Failed to delete old image from Cloudinary:", error);
+      if (!req.user?._id) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ error: ErrorMessages.UNAUTHORIZED});
+        return;
       }
 
-      // Create thumbnail URL
-      const thumbnailUrl = cloudinary.url(file.filename, {
-        width: 300,
-        height: 300,
-        crop: "fill",
-        quality: "auto",
-        format: "webp",
-      });
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 10));
 
-      // Update with new file info
-      image.publicId = file.filename;
-      image.url = file.path;
-      image.format = file.mimetype.split("/")[1];
-      image.bytes = file.size;
-      image.thumbnailUrl = thumbnailUrl;
-      image.width = file.width;
-      image.height = file.height;
-    }
-
-    // Update title if provided
-    if (title) {
-      image.title = title;
-    }
-
-    await image.save();
-
-    res.json({
-      message: "Image updated successfully!",
-      image,
-    });
-  } catch (error: unknown) {
-    console.error("Update image error: ", error);
-    res.status(500).json({ error: "Server error" });
-  }
-};
-
-// Delete image with Cloudinary
-export const deleteImage = async (
-  req: AuthRequest,
-  res: Response
-): Promise<void> => {
-  try {
-    const { id } = req.params;
-
-    if (!req.user?._id) {
-      res.status(401).json({ error: "User not authenticated" });
-      return;
-    }
-
-    // Find and delete image
-    const image = await Image.findOneAndDelete({ _id: id, user: req.user._id });
-
-    if (!image) {
-      res.status(404).json({ error: "Image not found" });
-      return;
-    }
-
-    // Delete from Cloudinary
-    try {
-      await cloudinary.uploader.destroy(image.publicId);
-    } catch (error) {
-      console.error("Failed to delete image from Cloudinary:", error);
-      // Continue anyway - at least DB record is deleted
-    }
-
-    res.json({ message: "Image deleted successfully!" });
-  } catch (error: unknown) {
-    console.error("Delete image error: ", error);
-    res.status(500).json({ error: "Server error" });
-  }
-};
-
-// Bulk delete images with Cloudinary
-export const bulkDeleteImages = async (
-  req: AuthRequest,
-  res: Response
-): Promise<void> => {
-  try {
-    const { imageIds } = req.body as { imageIds: string[] };
-
-    if (!req.user?._id) {
-      res.status(401).json({ error: "User not authenticated" });
-      return;
-    }
-
-    if (!Array.isArray(imageIds) || imageIds.length === 0) {
-      res.status(400).json({ error: "Invalid image IDs array" });
-      return;
-    }
-
-    // Find images to delete
-    const images = await Image.find({
-      _id: { $in: imageIds },
-      user: req.user._id,
-    });
-
-    if (images.length === 0) {
-      res.status(404).json({ error: "No images found" });
-      return;
-    }
-
-    // Delete from Cloudinary
-    const cloudinaryDeletePromises = images.map((image) =>
-      cloudinary.uploader.destroy(image.publicId).catch((error) => {
-        console.error(
-          `Failed to delete image ${image.publicId} from Cloudinary:`,
-          error
-        );
-        return null; // Continue even if Cloudinary deletion fails
-      })
-    );
-
-    // Delete from database
-    const dbDeleteResult = await Image.deleteMany({
-      _id: { $in: imageIds },
-      user: req.user._id,
-    });
-
-    // Wait for Cloudinary deletions
-    await Promise.all(cloudinaryDeletePromises);
-
-    res.json({
-      message: `${images.length} images deleted successfully`,
-      deletedCount: dbDeleteResult.deletedCount,
-    });
-  } catch (error: unknown) {
-    console.error("Bulk delete images error: ", error);
-    res.status(500).json({ error: "Server error" });
-  }
-};
-
-// Rearrange image order (unchanged - works the same with Cloudinary)
-export const rearrangeImages = async (
-  req: AuthRequest,
-  res: Response
-): Promise<void> => {
-  try {
-    const { imageOrder } = req.body as RearrangeImagesBody;
-
-    if (!req.user?._id) {
-      res.status(401).json({ error: "User not authenticated" });
-      return;
-    }
-
-    if (!Array.isArray(imageOrder)) {
-      res.status(400).json({ error: "Invalid image order array" });
-      return;
-    }
-
-    // Update order for each image
-    const updatePromises = imageOrder.map((imageId, index) => {
-      return Image.findOneAndUpdate(
-        { _id: imageId, user: req.user!._id },
-        { order: index },
-        { new: true }
+      const { images, total } = await this._imageService.getImages(
+        req.user._id.toString(),
+        page,
+        limit
       );
-    });
 
-    await Promise.all(updatePromises);
-    res.json({ message: "Images rearranged successfully" });
-  } catch (error: unknown) {
-    console.error("Rearrange image error: ", error);
-    res.status(500).json({ error: "Server error" });
-  }
-};
+      const totalPages = Math.ceil(total / limit);
+      const hasMore = page < totalPages;
 
-// Get image statistics
-export const getImageStats = async (
-  req: AuthRequest,
-  res: Response
-): Promise<void> => {
-  try {
-    if (!req.user?._id) {
-      res.status(401).json({ error: "User not authenticated" });
-      return;
+      res.json({
+        success: true,
+        images,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasMore,
+        },
+      });
+    } catch (error: any) {
+      console.error("Get images error:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: error.message || ErrorMessages.SERVER_ERROR });
     }
+  };
 
-    const stats = await Image.aggregate([
-      { $match: { user: req.user._id } },
-      {
-        $group: {
-          _id: null,
-          totalImages: { $sum: 1 },
-          totalSize: { $sum: { $ifNull: ["$bytes", 0] } },
-          recentUploads: {
-            $sum: {
-              $cond: [
-                {
-                  $gte: [
-                    "$createdAt",
-                    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-                  ],
-                },
-                1,
-                0,
-              ],
-            },
-          },
-        },
-      },
-      {
-        $project: {
-          totalImages: 1,
-          totalSize: 1,
-          recentUploads: 1,
-          totalSizeMB: {
-            $round: [{ $divide: ["$totalSize", 1024 * 1024] }, 2],
-          },
-        },
-      },
-    ]);
+  uploadImage = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { title } = req.body;
 
-    const result = stats[0] || {
-      totalImages: 0,
-      totalSize: 0,
-      recentUploads: 0,
-      totalSizeMB: 0,
-    };
+      if (!req.user?._id) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ error: ErrorMessages.UNAUTHORIZED});
+        return;
+      }
 
-    res.json({
-      success: true,
-      stats: {
-        ...result,
-        totalSizeMB: result.totalSizeMB ?? 0,
-      },
-    });
-  } catch (error: unknown) {
-    console.error("Get image stats error: ", error);
-    res.status(500).json({ error: "Server error" });
-  }
-};
+      if (!req.file) {
+        res.status(HttpStatus.BAD_REQUEST).json({ error: ErrorMessages.NO_FILE_UPLOADED });
+        return;
+      }
+
+      const image = await this._imageService.uploadImage(
+        req.user._id.toString(),
+        req.file,
+        title
+      );
+
+      res.status(HttpStatus.CREATED).json({
+        message: SuccessMessages.IMAGE_UPLOADED,
+        image,
+      });
+    } catch (error: any) {
+      console.error("Upload Image error:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: error.message || ErrorMessages.SERVER_ERROR});
+    }
+  };
+
+  bulkUploadImages = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { titles } = req.body;
+      const files = req.files as any[];
+
+      if (!req.user?._id) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ error: ErrorMessages.UNAUTHORIZED});
+        return;
+      }
+
+      if (!files || files.length === 0) {
+        res.status(HttpStatus.BAD_REQUEST).json({ error: ErrorMessages.NO_FILE_UPLOADED });
+        return;
+      }
+
+      if (!titles || titles.length !== files.length) {
+        res.status(HttpStatus.BAD_REQUEST).json({ error: ErrorMessages.TITLE_COUNT_MISMATCH });
+        return;
+      }
+
+      const images = await this._imageService.bulkUploadImages(
+        req.user._id.toString(),
+        files,
+        titles
+      );
+
+      res.status(HttpStatus.CREATED).json({
+        message: `${files.length} images uploaded`,
+        images,
+      });
+    } catch (error: any) {
+      console.error("Bulk upload images error:", error);
+
+      // Clean up uploaded files on error
+      if (req.files && Array.isArray(req.files)) {
+        // You might want to add cleanup logic here if needed
+      }
+
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: error.message || ErrorMessages.SERVER_ERROR});
+    }
+  };
+
+  updateImage = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const { title } = req.body;
+      const file = req.file as any;
+
+      if (!req.user?._id) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ error: ErrorMessages.UNAUTHORIZED });
+        return;
+      }
+
+      const image = await this._imageService.updateImage(
+        id,
+        req.user._id.toString(),
+        title,
+        file
+      );
+
+      res.json({
+        message: SuccessMessages.IMAGE_UPDATED,
+        image,
+      });
+    } catch (error: any) {
+      console.error("Update image error:", error);
+      const status = error.message.includes("not found") ? HttpStatus.NOT_FOUND : HttpStatus.INTERNAL_SERVER_ERROR;
+      res.status(status).json({ error: error.message || ErrorMessages.SERVER_ERROR});
+    }
+  };
+
+  deleteImage = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+
+      if (!req.user?._id) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ error: ErrorMessages.UNAUTHORIZED });
+        return;
+      }
+
+      await this._imageService.deleteImage(id, req.user._id.toString());
+
+      res.json({ message: SuccessMessages.IMAGE_DELETED });
+    } catch (error: any) {
+      console.error("Delete image error:", error);
+      const status = error.message.includes("not found") ? HttpStatus.NOT_FOUND : HttpStatus.INTERNAL_SERVER_ERROR;
+      res.status(status).json({ error: error.message || ErrorMessages.SERVER_ERROR});
+    }
+  };
+
+  bulkDeleteImages = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { imageIds } = req.body;
+
+      if (!req.user?._id) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ error: ErrorMessages.UNAUTHORIZED });
+        return;
+      }
+
+      if (!Array.isArray(imageIds) || imageIds.length === 0) {
+        res.status(HttpStatus.BAD_REQUEST).json({ error: ErrorMessages.INVALID_IMAGE_IDS});
+        return;
+      }
+
+      const deletedCount = await this._imageService.bulkDeleteImages(
+        imageIds,
+        req.user._id.toString()
+      );
+
+      if (deletedCount === 0) {
+        res.status(HttpStatus.NOT_FOUND).json({ error: ErrorMessages.IMAGE_NOT_FOUND });
+        return;
+      }
+
+      res.json({
+        message: `${deletedCount} images deleted successfully`,
+        deletedCount,
+      });
+    } catch (error: any) {
+      console.error("Bulk delete images error:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: error.message || ErrorMessages.SERVER_ERROR});
+    }
+  };
+
+  rearrangeImages = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { imageOrder } = req.body;
+
+      if (!req.user?._id) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ error: ErrorMessages.UNAUTHORIZED });
+        return;
+      }
+
+      if (!Array.isArray(imageOrder)) {
+        res.status(HttpStatus.BAD_REQUEST).json({ error: ErrorMessages.INVALID_IMAGE_ORDERS});
+        return;
+      }
+
+      await this._imageService.rearrangeImages(
+        req.user._id.toString(),
+        imageOrder
+      );
+
+      res.json({ message: SuccessMessages.IMAGES_REARRANGED });
+    } catch (error: any) {
+      console.error("Rearrange image error:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: error.message || ErrorMessages.SERVER_ERROR});
+    }
+  };
+
+  getImageStats = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user?._id) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ error: ErrorMessages.UNAUTHORIZED });
+        return;
+      }
+
+      const stats = await this._imageService.getImageStats(
+        req.user._id.toString()
+      );
+
+      res.json({
+        success: true,
+        stats,
+      });
+    } catch (error: any) {
+      console.error("Get image stats error:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: error.message || ErrorMessages.SERVER_ERROR});
+    }
+  };
+}

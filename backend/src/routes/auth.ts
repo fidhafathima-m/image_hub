@@ -1,23 +1,11 @@
 import express, { Router } from 'express';
-import { 
-    register, 
-    login, 
-    forgetPassword, 
-    resetPassword 
-} from '../controllers/authController.js';
+import { authController } from '../config/container';
 
 const router: Router = express.Router();
 
-// POST /api/auth/register - Register a new user
-router.post('/register', register);
-
-// POST /api/auth/login - User login
-router.post('/login', login);
-
-// POST /api/auth/forgot-password - Request password reset
-router.post('/forgot-password', forgetPassword);
-
-// POST /api/auth/reset-password - Reset password with token
-router.post('/reset-password', resetPassword);
+router.post('/register', authController.register);
+router.post('/login', authController.login);
+router.post('/forgot-password', authController.forgetPassword);
+router.post('/reset-password', authController.resetPassword);
 
 export default router;
