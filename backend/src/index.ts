@@ -5,9 +5,9 @@ import path from "path";
 import { fileURLToPath } from "url";
 import multer from "multer";
 
-import { connectDB } from "./config/database";
-import authRoutes from "./routes/auth";
-import imageRoutes from "./routes/images";
+import { connectDB } from "./config/database.js";
+import authRoutes from "./routes/auth.js";
+import imageRoutes from "./routes/images.js";
 
 // Load environment variables
 dotenv.config();

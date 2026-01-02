@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import User, { IUser } from '../models/UserSchema';
-import { AuthRequest, JwtUserPayload } from '../types/index';
+import User, { IUser } from '../models/UserSchema.js';
+import { AuthRequest, JwtUserPayload } from '../types/index.js';
 
 export const auth = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {

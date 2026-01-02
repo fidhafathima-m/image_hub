@@ -10,7 +10,7 @@ import {
     ForgotPasswordBody,
     ResetPasswordBody
 } from '../types/index.js';
-import User from '../models/UserSchema';
+import User from '../models/UserSchema.js';
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
 
