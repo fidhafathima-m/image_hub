@@ -9,9 +9,11 @@ export class UserRepository extends BaseRepository<IUser> implements IUserReposi
     super(UserModel as unknown as Model<IUser>);
   }
 
-  async findByEmail(email: string): Promise<IUser | null> {
-    return this.model.findOne({ email: email.toLowerCase() });
-  }
+  // In user.repository.ts
+async findByEmail(email: string): Promise<IUser | null> {
+  const user = await this.model.findOne({ email: email.toLowerCase() }).select('+password');
+  return user;
+}
 
   async findById(id: string): Promise<IUser | null> {
     return this.model.findById(id);

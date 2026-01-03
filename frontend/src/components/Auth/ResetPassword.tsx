@@ -1,7 +1,7 @@
 import React, { useState, FormEvent } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { Lock, Loader, ArrowLeft } from "lucide-react";
+import { Lock, Loader, ArrowLeft, EyeOff, Eye } from "lucide-react";
 import { ResetPasswordFormData } from "../../types/components";
 
 const ResetPassword: React.FC = () => {
@@ -10,20 +10,23 @@ const ResetPassword: React.FC = () => {
     password: "",
     confirmPassword: "",
   });
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<string>("");
   const [resetSuccess, setResetSuccess] = useState<boolean>(false);
-  
+
   const navigate = useNavigate();
   const { resetPassword } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
-    setError(''); // Clear error when user starts typing
+    setError(""); // Clear error when user starts typing
   };
 
   const validateForm = (): boolean => {
@@ -34,7 +37,8 @@ const ResetPassword: React.FC = () => {
     }
 
     // Password strength validation
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    const passwordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
     if (!passwordRegex.test(formData.password)) {
       setError(
@@ -46,22 +50,29 @@ const ResetPassword: React.FC = () => {
     return true;
   };
 
+  const togglePasswordVisibility = (): void => {
+    setShowPassword(!showPassword);
+  };
+  const toggleConfirmPasswordVisibility = (): void => {
+    setShowConfirmPassword(!showConfirmPassword);
+  };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
-    
+
     if (!validateForm() || !token) return;
-    
+
     setLoading(true);
-    setError('');
+    setError("");
 
     const result = await resetPassword(token, formData.password);
-    
+
     if (result.success) {
       setResetSuccess(true);
     } else {
       setError(result.error || "Failed to reset password");
     }
-    
+
     setLoading(false);
   };
 
@@ -105,13 +116,16 @@ const ResetPassword: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               New Password
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 id="password"
                 name="password"
                 value={formData.password}
@@ -122,17 +136,33 @@ const ResetPassword: React.FC = () => {
                 minLength={8}
                 disabled={loading}
               />
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                disabled={loading}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
             </div>
           </div>
 
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="confirmPassword"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Confirm New Password
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 id="confirmPassword"
                 name="confirmPassword"
                 value={formData.confirmPassword}
@@ -143,6 +173,19 @@ const ResetPassword: React.FC = () => {
                 minLength={8}
                 disabled={loading}
               />
+              <button
+                type="button"
+                onClick={toggleConfirmPasswordVisibility}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                disabled={loading}
+                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
             </div>
           </div>
 

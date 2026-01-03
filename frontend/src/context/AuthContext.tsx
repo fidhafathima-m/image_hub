@@ -32,10 +32,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const storedUser = localStorage.getItem('user');
 
       if (storedToken && storedUser) {
-        // Validate token on server if you have an endpoint
-        // const isValid = await authAPI.validateToken();
-        
-        // For now, just check if token exists
         setToken(storedToken);
         setUser(JSON.parse(storedUser));
         setIsAuthenticated(true);
@@ -202,53 +198,4 @@ export const useAuth = (): AuthContextType => {
   }
   
   return context;
-};
-
-// Optional: Higher Order Component for requiring authentication
-export const withAuth = <P extends object>(Component: React.ComponentType<P>): React.FC<P> => {
-  const WithAuth: React.FC<P> = (props) => {
-    const { isAuthenticated, loading } = useAuth();
-
-    if (loading) {
-      return (
-        <div className="flex justify-center items-center h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      );
-    }
-
-    if (!isAuthenticated) {
-      return <div>Please login to access this page</div>;
-    }
-
-    return <Component {...props} />;
-  };
-
-  WithAuth.displayName = `WithAuth(${Component.displayName || Component.name})`;
-  return WithAuth;
-};
-
-// Optional: Hook for protected API calls
-export const useAuthApi = () => {
-  const { token } = useAuth();
-  
-  const authHeaders = (): Record<string, string> => {
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
-
-  const isTokenExpired = (): boolean => {
-    if (!token) return true;
-    
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.exp * 1000 < Date.now();
-    } catch {
-      return true;
-    }
-  };
-
-  return {
-    authHeaders,
-    isTokenExpired,
-  };
 };

@@ -1,7 +1,7 @@
 import React, { useState, FormEvent } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Mail, Lock, Loader } from 'lucide-react';
+import { Mail, Lock, Loader, Eye, EyeOff } from 'lucide-react';
 import { LoginFormData } from '../../types/components';
 
 const Login: React.FC = () => {
@@ -9,6 +9,7 @@ const Login: React.FC = () => {
     email: '',
     password: '',
   });
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   
@@ -23,6 +24,10 @@ const Login: React.FC = () => {
       [name]: value
     }));
     setError(''); // Clear error when user starts typing
+  };
+
+  const togglePasswordVisibility = (): void => {
+    setShowPassword(!showPassword);
   };
 
   const validateForm = (): boolean => {
@@ -94,6 +99,7 @@ const Login: React.FC = () => {
                 placeholder="Enter your email"
                 required
                 disabled={loading}
+                autoComplete="email"
               />
             </div>
           </div>
@@ -105,21 +111,39 @@ const Login: React.FC = () => {
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 id="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className="input-field pl-10"
+                className="input-field pl-10 pr-10"
                 placeholder="Enter your password"
                 required
                 disabled={loading}
+                autoComplete="current-password"
               />
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                disabled={loading}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
             </div>
           </div>
 
-          <div className="text-right">
-            <Link to="/forgot-password" className="text-sm text-primary-600 hover:text-primary-800">
+          <div className="text-end">
+            
+            <Link 
+              to="/forgot-password" 
+              className="text-sm text-primary-600 hover:text-primary-800 transition-colors"
+            >
               Forgot Password?
             </Link>
           </div>
@@ -139,7 +163,10 @@ const Login: React.FC = () => {
         <div className="mt-6 text-center">
           <p className="text-gray-600">
             Don't have an account?{' '}
-            <Link to="/register" className="text-primary-600 hover:text-primary-800 font-medium">
+            <Link 
+              to="/register" 
+              className="text-primary-600 hover:text-primary-800 font-medium transition-colors"
+            >
               Register here
             </Link>
           </p>

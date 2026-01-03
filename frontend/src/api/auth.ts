@@ -7,11 +7,12 @@ import {
     AuthResponse,
     ApiError
 } from '../types/api';
+import { AUTH_ROUTE_PATHS } from '../utils/constants.js';
 
 export const authAPI = {
     register: async (userData: RegisterRequest): Promise<AuthResponse> => {
         try {
-            const response = await axiosInstance.post('/auth/register', userData);
+            const response = await axiosInstance.post(AUTH_ROUTE_PATHS.REGISTER, userData);
             return response.data;
         } catch (error: any) {
             throw {
@@ -24,7 +25,7 @@ export const authAPI = {
 
     login: async (credentials: LoginRequest): Promise<AuthResponse> => {
         try {
-            const response = await axiosInstance.post('/auth/login', credentials);
+            const response = await axiosInstance.post(AUTH_ROUTE_PATHS.LOGIN, credentials);
             return response.data;
         } catch (error: any) {
             throw {
@@ -38,7 +39,7 @@ export const authAPI = {
     forgotPassword: async (email: string): Promise<{ message: string }> => {
         try {
             const requestData: ForgotPasswordRequest = { email };
-            const response = await axiosInstance.post('/auth/forgot-password', requestData);
+            const response = await axiosInstance.post(AUTH_ROUTE_PATHS.FORGOT_PASSWORD, requestData);
             return response.data;
         } catch (error: any) {
             throw {
@@ -52,7 +53,7 @@ export const authAPI = {
     resetPassword: async (token: string, password: string): Promise<{ message: string }> => {
         try {
             const requestData: ResetPasswordRequest = { token, password };
-            const response = await axiosInstance.post('/auth/reset-password', requestData);
+            const response = await axiosInstance.post(AUTH_ROUTE_PATHS.RESET_PASSWORD, requestData);
             return response.data;
         } catch (error: any) {
             throw {
@@ -60,16 +61,6 @@ export const authAPI = {
                 error: error.response?.data,
                 status: error.response?.status
             } as ApiError;
-        }
-    },
-
-    // Optional: Validate token
-    validateToken: async (): Promise<{ valid: boolean; user?: any }> => {
-        try {
-            const response = await axiosInstance.get('/auth/validate');
-            return { valid: true, user: response.data.user };
-        } catch (error: any) {
-            return { valid: false };
         }
     },
 

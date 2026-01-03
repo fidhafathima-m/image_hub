@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
-import { API_URL } from '../utils/constants';
+import { API_URL, ERROR_MESSAGES } from '../utils/constants';
 import { CustomAxiosError } from '../types/api.js';
 
 const axiosInstance: AxiosInstance = axios.create({
@@ -8,7 +8,7 @@ const axiosInstance: AxiosInstance = axios.create({
         'Content-Type': 'application/json'
     },
     timeout: 30000, // 30 seconds timeout
-    withCredentials: true // Include credentials if needed
+    withCredentials: true 
 });
 
 // Add token to requests
@@ -31,7 +31,6 @@ axiosInstance.interceptors.request.use(
 // Handle token expiration and other response errors
 axiosInstance.interceptors.response.use(
     (response: AxiosResponse): AxiosResponse => {
-        // You can transform response data here if needed
         return response;
     },
     (error: AxiosError): Promise<CustomAxiosError> => {
@@ -39,7 +38,7 @@ axiosInstance.interceptors.response.use(
         
         if (error.response?.status === 401) {
             customError.isUnauthorized = true;
-            // Optionally clear local storage and redirect to login
+            // clear local storage and redirect to login
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             
@@ -50,15 +49,15 @@ axiosInstance.interceptors.response.use(
         }
         
         if (error.response?.status === 403) {
-            customError.message = 'Access forbidden. You do not have permission to perform this action.';
+            customError.message = ERROR_MESSAGES.FORBIDDEN;
         }
         
         if (error.response?.status === 404) {
-            customError.message = 'Resource not found.';
+            customError.message = ERROR_MESSAGES.NOT_FOUND;
         }
         
         if (error.response?.status === 500) {
-            customError.message = 'Server error. Please try again later.';
+            customError.message = ERROR_MESSAGES.SERVER_ERROR;
         }
         
         customError.response = error.response;

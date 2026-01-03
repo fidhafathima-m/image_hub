@@ -1,20 +1,18 @@
 import axiosInstance from "./axiosInstance.js";
 import { getMultipartHeaders } from "./axiosInstance.js";
-import { BASE_URL } from "../utils/constants.js";
+import { BASE_URL, IMAGE_ROUTE_PATHS } from "../utils/constants.js";
 import { ImageResponse, ApiError, ImagesResponse } from "../types/api";
 import { Image } from "../types/index.js";
 
-// Add Cloudinary configuration
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "";
 
 export const imagesAPI = {
   getImages: async (page = 1, limit = 10): Promise<ImagesResponse> => {
     try {
       const response = await axiosInstance.get(
-        `/images?page=${page}&limit=${limit}`
+        IMAGE_ROUTE_PATHS.GET_IMAGES(page, limit)
       );
 
-      // Ensure response has the correct structure
       if (
         response.data.success &&
         response.data.images &&
@@ -49,9 +47,13 @@ export const imagesAPI = {
     formData: FormData
   ): Promise<{ message: string; image: ImageResponse }> => {
     try {
-      const response = await axiosInstance.post("/images/upload", formData, {
-        headers: getMultipartHeaders(),
-      });
+      const response = await axiosInstance.post(
+        IMAGE_ROUTE_PATHS.UPLOAD_IMAGE,
+        formData,
+        {
+          headers: getMultipartHeaders(),
+        }
+      );
       return response.data;
     } catch (error: any) {
       throw {
@@ -78,7 +80,7 @@ export const imagesAPI = {
       });
 
       const response = await axiosInstance.post(
-        "/images/bulk-upload",
+        IMAGE_ROUTE_PATHS.BULK_UPLOAD_IMAGES,
         formData,
         {
           headers: getMultipartHeaders(),
@@ -109,9 +111,13 @@ export const imagesAPI = {
         formData.append("image", data.image);
       }
 
-      const response = await axiosInstance.put(`/images/${id}`, formData, {
-        headers: getMultipartHeaders(),
-      });
+      const response = await axiosInstance.put(
+        IMAGE_ROUTE_PATHS.UPDATE_IMAGE(id),
+        formData,
+        {
+          headers: getMultipartHeaders(),
+        }
+      );
       return response.data;
     } catch (error: any) {
       throw {
@@ -124,7 +130,9 @@ export const imagesAPI = {
 
   deleteImage: async (id: string): Promise<{ message: string }> => {
     try {
-      const response = await axiosInstance.delete(`/images/${id}`);
+      const response = await axiosInstance.delete(
+        IMAGE_ROUTE_PATHS.DELETE_IMAGE(id)
+      );
       return response.data;
     } catch (error: any) {
       throw {
@@ -139,9 +147,12 @@ export const imagesAPI = {
     imageIds: string[]
   ): Promise<{ message: string; deletedCount: number }> => {
     try {
-      const response = await axiosInstance.post("/images/bulk-delete", {
-        imageIds,
-      });
+      const response = await axiosInstance.post(
+        IMAGE_ROUTE_PATHS.BULK_DELETE_IMAGES,
+        {
+          imageIds,
+        }
+      );
       return response.data;
     } catch (error: any) {
       throw {
@@ -153,12 +164,15 @@ export const imagesAPI = {
   },
 
   rearrangeImages: async (
-    imageOrder: string[]
+    imageOrder: Array<{id: string, order: number}>
   ): Promise<{ message: string }> => {
     try {
-      const response = await axiosInstance.put("/images/rearrange/order", {
-        imageOrder,
-      });
+      const response = await axiosInstance.put(
+        IMAGE_ROUTE_PATHS.REARRANGE_IMAGES,
+        {
+          imageOrder,
+        },
+      );
       return response.data;
     } catch (error: any) {
       throw {
@@ -169,7 +183,6 @@ export const imagesAPI = {
     }
   },
 
-  // Updated: Generate Cloudinary URL with optimizations
   getImageUrl: (image: Image): string => {
     // If we have a publicId (Cloudinary), use optimized URL
     if (image.publicId && CLOUDINARY_CLOUD_NAME) {
@@ -182,7 +195,6 @@ export const imagesAPI = {
 
   // Get thumbnail URL for Cloudinary
   getThumbnailUrl: (image: Image): string => {
-    // If we have a publicId (Cloudinary), use thumbnail URL
     if (image.publicId && CLOUDINARY_CLOUD_NAME) {
       return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/w_300,h_300,c_fill,q_auto,f_webp/${image.publicId}`;
     }
@@ -220,7 +232,9 @@ export const imagesAPI = {
   // Get image stats
   getImageStats: async (): Promise<any> => {
     try {
-      const response = await axiosInstance.get("/images/stats");
+      const response = await axiosInstance.get(
+        IMAGE_ROUTE_PATHS.GET_IMAGE_STATS
+      );
       return response.data;
     } catch (error: any) {
       throw {
@@ -236,7 +250,7 @@ export const imagesAPI = {
 export const validateImageFile = (
   file: File
 ): { valid: boolean; error?: string } => {
-  const maxSize = 10 * 1024 * 1024; // 10MB (Cloudinary allows more)
+  const maxSize = 10 * 1024 * 1024; // 10MB
   const allowedTypes = [
     "image/jpeg",
     "image/jpg",

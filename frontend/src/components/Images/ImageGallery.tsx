@@ -127,50 +127,54 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
     onStatsUpdateRef.current = onStatsUpdate;
   }, [onStatsUpdate]);
 
-  const fetchImages = useCallback(async (page: number = 1, isLoadMore: boolean = false): Promise<void> => {
-    if (isFetchingRef.current) return;
-    
-    try {
-      isFetchingRef.current = true;
-      
-      if (isLoadMore) {
-        setState(prev => ({ ...prev, loadingMore: true }));
-      } else {
-        setState(prev => ({ ...prev, loading: true }));
-      }
+  const fetchImages = useCallback(
+    async (page: number = 1, isLoadMore: boolean = false): Promise<void> => {
+      if (isFetchingRef.current) return;
 
-      const response = await imagesAPI.getImages(page, 10);
-      
-      setState(prev => ({
-        ...prev,
-        images: page === 1 ? response.images : [...prev.images, ...response.images],
-        page: response.pagination.page,
-        hasMore: response.pagination.hasMore,
-        totalImages: response.pagination.total,
-        loading: false,
-        loadingMore: false,
-      }));
+      try {
+        isFetchingRef.current = true;
 
-      // Call onStatsUpdate callback if provided
-      if (onStatsUpdateRef.current) {
-        onStatsUpdateRef.current({
+        if (isLoadMore) {
+          setState((prev) => ({ ...prev, loadingMore: true }));
+        } else {
+          setState((prev) => ({ ...prev, loading: true }));
+        }
+
+        const response = await imagesAPI.getImages(page, 10);
+
+        setState((prev) => ({
+          ...prev,
+          images:
+            page === 1 ? response.images : [...prev.images, ...response.images],
+          page: response.pagination.page,
+          hasMore: response.pagination.hasMore,
           totalImages: response.pagination.total,
-          totalSize: '0 MB', // You'll need to calculate this from images
-          recentUploads: 0
-        });
+          loading: false,
+          loadingMore: false,
+        }));
+
+        // Call onStatsUpdate callback if provided
+        if (onStatsUpdateRef.current) {
+          onStatsUpdateRef.current({
+            totalImages: response.pagination.total,
+            totalSize: "0 MB", // You'll need to calculate this from images
+            recentUploads: 0,
+          });
+        }
+      } catch (error: any) {
+        console.error("Fetch images error:", error);
+        toast.error(error.message || "Failed to load images");
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          loadingMore: false,
+        }));
+      } finally {
+        isFetchingRef.current = false;
       }
-    } catch (error: any) {
-      console.error('Fetch images error:', error);
-      toast.error(error.message || "Failed to load images");
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        loadingMore: false 
-      }));
-    } finally {
-      isFetchingRef.current = false;
-    }
-  }, []);
+    },
+    []
+  );
 
   // Initial fetch
   useEffect(() => {
@@ -187,11 +191,15 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && state.hasMore && !isFetchingRef.current) {
+        if (
+          entries[0].isIntersecting &&
+          state.hasMore &&
+          !isFetchingRef.current
+        ) {
           fetchImages(state.page + 1, true);
         }
       },
-      { threshold: 0.1, rootMargin: '100px' }
+      { threshold: 0.1, rootMargin: "100px" }
     );
 
     if (loadMoreRef.current) {
@@ -203,14 +211,22 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
         observerRef.current.disconnect();
       }
     };
-  }, [state.hasMore, state.loading, state.loadingMore, state.page, fetchImages]);
+  }, [
+    state.hasMore,
+    state.loading,
+    state.loadingMore,
+    state.page,
+    fetchImages,
+  ]);
 
   const handleDragEnd = (event: DragEndEvent): void => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      setState(prev => {
-        const oldIndex = prev.images.findIndex((item) => item._id === active.id);
+      setState((prev) => {
+        const oldIndex = prev.images.findIndex(
+          (item) => item._id === active.id
+        );
         const newIndex = prev.images.findIndex((item) => item._id === over.id);
 
         const newItems = arrayMove(prev.images, oldIndex, newIndex);
@@ -226,7 +242,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   };
 
   const handleSelectImage = (imageId: string, isSelected: boolean): void => {
-    setState(prev => {
+    setState((prev) => {
       const newSelected = new Set(prev.selectedImages);
       if (isSelected) {
         newSelected.add(imageId);
@@ -238,7 +254,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   };
 
   const handleSelectAll = (): void => {
-    setState(prev => {
+    setState((prev) => {
       if (prev.selectedImages.size === prev.images.length) {
         return { ...prev, selectedImages: new Set() };
       } else {
@@ -270,15 +286,15 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
         toast.success(
           result.message || `${selectedImages.size} images deleted successfully`
         );
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           selectedImages: new Set(),
           selectionMode: false,
         }));
-        
+
         // Refresh images from the beginning
         fetchImages(1);
-        
+
         // Call onDelete callback if provided
         if (onDelete) {
           onDelete();
@@ -290,29 +306,34 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   };
 
   const handleSaveOrder = async (): Promise<void> => {
-    try {
-      const imageOrder = state.images.map((img) => img._id);
-      await imagesAPI.rearrangeImages(imageOrder);
-      setState(prev => ({ ...prev, rearranged: false }));
-      toast.success("Image order saved successfully");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to save image order");
-    }
-  };
+  try {
+    // FIX: Create proper imageOrder array with both id and order
+    const imageOrder = state.images.map((img, index) => ({
+      id: img._id,
+      order: index
+    }));
+    
+    await imagesAPI.rearrangeImages(imageOrder);
+    setState((prev) => ({ ...prev, rearranged: false }));
+    toast.success("Image order saved successfully");
+  } catch (error: any) {
+    toast.error(error.message || "Failed to save image order");
+  }
+};
 
   const handleEdit = (image: Image): void => {
     // Call onEdit callback if provided, otherwise use internal state
     if (onEdit) {
       onEdit(image);
     } else {
-      setState(prev => ({ ...prev, editingImage: image }));
+      setState((prev) => ({ ...prev, editingImage: image }));
     }
   };
 
   const handleDelete = (): void => {
     fetchImages(1);
     // Clear selection after delete
-    setState(prev => ({ ...prev, selectedImages: new Set() }));
+    setState((prev) => ({ ...prev, selectedImages: new Set() }));
     // Call onDelete callback if provided
     if (onDelete) {
       onDelete();
@@ -321,7 +342,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
 
   const handleEditSuccess = (): void => {
     fetchImages(1);
-    setState(prev => ({ ...prev, editingImage: null }));
+    setState((prev) => ({ ...prev, editingImage: null }));
   };
 
   const {
