@@ -1,4 +1,4 @@
-import { IImage } from "../IImage";
+import { IImage } from "../IImage.js";
 
 export interface IImageService {
   getImages(userId: string, page: number, limit: number): Promise<{ images: IImage[]; total: number }>;

@@ -1,9 +1,9 @@
-import { AuthController } from "../controllers/authController";
-import { ImageController } from "../controllers/imageController";
-import { ImageRepository } from "../repositories/image.repository";
-import { UserRepository } from "../repositories/user.repository";
-import { AuthService } from "../services/auth.service";
-import { ImageService } from "../services/image.service";
+import { AuthController } from "../controllers/authController.js";
+import { ImageController } from "../controllers/imageController.js";
+import { ImageRepository } from "../repositories/image.repository.js";
+import { UserRepository } from "../repositories/user.repository.js";
+import { AuthService } from "../services/auth.service.js";
+import { ImageService } from "../services/image.service.js";
 
 const userRepository = new UserRepository()
 const authService = new AuthService(userRepository);

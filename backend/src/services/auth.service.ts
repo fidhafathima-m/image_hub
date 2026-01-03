@@ -2,9 +2,9 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { randomBytes, createHash } from "crypto";
 import sgMail from "@sendgrid/mail";
-import { IUser } from "../interfaces/IUser";
-import { IUserRepository } from "../interfaces/repositories/IUserRepository";
-import User from "../models/UserSchema";
+import { IUser } from "../interfaces/IUser.js";
+import { IUserRepository } from "../interfaces/repositories/IUserRepository.js";
+import User from "../models/UserSchema.js";
 
 export class AuthService {
   private _userRepository: IUserRepository;

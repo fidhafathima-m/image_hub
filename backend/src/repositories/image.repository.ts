@@ -1,8 +1,8 @@
 import { Model, Types } from 'mongoose';
-import { IImage } from '../interfaces/IImage';
-import { IImageRepository } from '../interfaces/repositories/IImageRepository';
-import ImageModel from '../models/ImageSchema';
-import { BaseRepository } from './base.repository';
+import { IImage } from '../interfaces/IImage.js';
+import { IImageRepository } from '../interfaces/repositories/IImageRepository.js';
+import ImageModel from '../models/ImageSchema.js';
+import { BaseRepository } from './base.repository.js';
 
 export class ImageRepository extends BaseRepository<IImage> implements IImageRepository {
   constructor() {

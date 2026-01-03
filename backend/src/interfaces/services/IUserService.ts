@@ -1,4 +1,4 @@
-import { IUser } from "../IUser";
+import { IUser } from "../IUser.js";
 
 export interface IUserService {
   register(userData: {

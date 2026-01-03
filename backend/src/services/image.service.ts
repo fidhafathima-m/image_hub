@@ -1,6 +1,6 @@
 import cloudinary from "../config/cloudinary";
-import { IImage } from "../interfaces/IImage";
-import { IImageRepository } from "../interfaces/repositories/IImageRepository";
+import { IImage } from "../interfaces/IImage.js";
+import { IImageRepository } from "../interfaces/repositories/IImageRepository.js";
 
 export class ImageService {
   private _imageRepository: IImageRepository;

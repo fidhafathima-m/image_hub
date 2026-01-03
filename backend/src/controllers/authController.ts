@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { IUserService } from "../interfaces/services/IUserService";
+import { IUserService } from "../interfaces/services/IUserService.js";
 import { ErrorMessages, HttpStatus, SuccessMessages } from "../constants";
 
 export class AuthController {

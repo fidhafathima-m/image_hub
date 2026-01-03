@@ -1,4 +1,4 @@
-import { IImage } from '../IImage';
+import { IImage } from '../IImage.js';
 
 export interface IImageRepository {
   create(imageData: Partial<IImage>): Promise<IImage>;
