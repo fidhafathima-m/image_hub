@@ -1,12 +1,12 @@
+// src/context/AuthContext.tsx
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { authAPI, storeAuthData, clearAuthData, isAuthenticated as checkAuth, getCurrentUser } from '../api/auth';
+import { authAPI, storeAuthData, clearAuthData } from '../api/auth';
 import toast from 'react-hot-toast';
 import { 
   User, 
   AuthContextType, 
   RegisterData, 
-  LoginData,
-  AuthResponse 
+  LoginData 
 } from '../types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,13 +32,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const storedUser = localStorage.getItem('user');
 
       if (storedToken && storedUser) {
+        // Optionally validate token expiration here
         setToken(storedToken);
         setUser(JSON.parse(storedUser));
         setIsAuthenticated(true);
       }
     } catch (error) {
       console.error('Auth initialization error:', error);
-      // Clear invalid auth data
       clearAuthData();
     } finally {
       setLoading(false);
@@ -51,14 +51,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
 
       const credentials: LoginData = { email, password };
-      const response: AuthResponse = await authAPI.login(credentials);
+      const response = await authAPI.login(credentials);
       
-      // Store auth data using helper function
-      storeAuthData(response.token, response.user);
+      // Store auth data with both tokens
+      storeAuthData(response.accessToken, response.refreshToken, response.user);
       
       // Update state
       setUser(response.user);
-      setToken(response.token);
+      setToken(response.accessToken);
       setIsAuthenticated(true);
       
       toast.success('Login successful!');
@@ -78,14 +78,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
 
-      const response: AuthResponse = await authAPI.register(userData);
+      const response = await authAPI.register(userData);
       
-      // Store auth data using helper function
-      storeAuthData(response.token, response.user);
+      // Store auth data with both tokens
+      storeAuthData(response.accessToken, response.refreshToken, response.user);
       
       // Update state
       setUser(response.user);
-      setToken(response.token);
+      setToken(response.accessToken);
       setIsAuthenticated(true);
       
       toast.success('Registration successful!');
