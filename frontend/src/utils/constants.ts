@@ -26,7 +26,8 @@ export const AUTH_ROUTE_PATHS = {
     LOGIN: '/auth/login',
     REGISTER: '/auth/register',
     FORGOT_PASSWORD: '/auth/forgot-password',
-    RESET_PASSWORD: '/auth/reset-password'
+    RESET_PASSWORD: '/auth/reset-password',
+    RESFRESH_TOKEN: "/auth/refresh-token"
 } as const;
 
 export const IMAGE_ROUTE_PATHS = {

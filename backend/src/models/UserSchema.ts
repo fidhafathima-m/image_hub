@@ -9,6 +9,9 @@ export interface IUser extends Document {
   password: string;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
+  refreshToken: string;
+  refreshTokenExpires: Date;
+
   createdAt: Date;
   updatedAt: Date;
 
@@ -68,6 +71,14 @@ const userSchema = new Schema<IUser, IUserModel>(
       select: false,
     },
     resetPasswordExpires: {
+      type: Date,
+      select: false,
+    },
+    refreshToken: {
+      type: String,
+      select: false,
+    },
+    refreshTokenExpires: {
       type: Date,
       select: false,
     },

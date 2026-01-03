@@ -22,13 +22,20 @@ export interface ResetPasswordRequest {
 
 export interface AuthResponse {
   message: string;
-  token: string;
+  accessToken: string;
+  refreshToken: string;
   user: {
     id: string;
     userName: string;
     email: string;
     phoneNumber?: string;
   };
+}
+
+export interface RefreshTokenResponse {
+  success: boolean;
+  accessToken: string;
+  refreshToken: string;
 }
 
 export interface ImageUploadRequest {

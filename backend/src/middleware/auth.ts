@@ -38,23 +38,26 @@ export const auth = async (req: AuthRequest, res: Response, next: NextFunction):
             email: user.email,
             phoneNumber: user.phoneNumber,
         };
-
-        // Add token to request if needed (optional)
-        (req as any).token = token;
         
         next();
     } catch (error: unknown) {
         console.error('Authentication error:', error);
         
         let errorMessage = 'Please authenticate!';
+        let statusCode = 401;
+        
         if (error instanceof Error) {
             if (error.name === 'TokenExpiredError') {
                 errorMessage = 'Token has expired';
+                statusCode = 401; // Could be 401 or special code like 440
             } else if (error.name === 'JsonWebTokenError') {
                 errorMessage = 'Invalid token';
             }
         }
         
-        res.status(401).json({ error: errorMessage });
+        res.status(statusCode).json({ 
+            error: errorMessage,
+            code: error instanceof Error && error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'AUTH_ERROR'
+        });
     }
 };

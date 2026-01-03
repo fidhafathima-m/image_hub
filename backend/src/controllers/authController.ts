@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { IUserService } from "../interfaces/services/IUserService.js";
 import { ErrorMessages, HttpStatus, SuccessMessages } from "../constants/index.js";
+import { AuthRequest } from "../types/index.js";
 
 export class AuthController {
   private _authService: IUserService;
@@ -13,7 +14,7 @@ export class AuthController {
     try {
       const { userName, email, phoneNumber, password } = req.body;
 
-      const { user, token } = await this._authService.register({
+      const { user, accessToken, refreshToken } = await this._authService.register({
         userName,
         email,
         phoneNumber,
@@ -22,7 +23,8 @@ export class AuthController {
 
       res.status(HttpStatus.OK).json({
         message: SuccessMessages.REGISTER_SUCCESS,
-        token,
+        accessToken,
+        refreshToken,
         user: {
           id: user._id,
           userName: user.userName,
@@ -43,11 +45,12 @@ export class AuthController {
     try {
       const { email, password } = req.body;
 
-      const { user, token } = await this._authService.login(email, password);
+      const { user, accessToken, refreshToken } = await this._authService.login(email, password);
 
       res.json({
         message: SuccessMessages.LOGIN_SUCCESS,
-        token,
+        accessToken,
+        refreshToken,
         user: {
           id: user._id,
           userName: user.userName,
@@ -104,6 +107,42 @@ export class AuthController {
         ? HttpStatus.BAD_REQUEST
         : HttpStatus.INTERNAL_SERVER_ERROR;
       res.status(status).json({ error: error.message || ErrorMessages.SERVER_ERROR });
+    }
+  };
+  refreshToken = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { refreshToken } = req.body;
+
+      if (!refreshToken) {
+        res.status(400).json({ error: 'Refresh token is required' });
+        return;
+      }
+
+      const { accessToken, newRefreshToken } = await this._authService.refreshAccessToken(refreshToken);
+
+      res.json({
+        success: true,
+        accessToken,
+        refreshToken: newRefreshToken
+      });
+    } catch (error: any) {
+      console.error('Refresh token error:', error);
+      res.status(401).json({ error: error.message || 'Invalid refresh token' });
+    }
+  };
+
+  logout = async (req: AuthRequest, res: Response): Promise<void> => { // Changed to AuthRequest
+    try {
+      if (!req.user?._id) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      await this._authService.logout(req.user._id.toString());
+      res.json({ success: true, message: 'Logged out successfully' });
+    } catch (error: any) {
+      console.error('Logout error:', error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: error.message || 'Server error' });
     }
   };
 }

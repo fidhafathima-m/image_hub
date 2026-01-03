@@ -29,4 +29,12 @@ async findByEmail(email: string): Promise<IUser | null> {
   async update(id: string, updateData: Partial<IUser>): Promise<IUser | null> {
     return this.model.findByIdAndUpdate(id, updateData, { new: true });
   }
+
+  async findOne(filter: any): Promise<IUser | null> {
+  return this.model.findOne(filter);
+}
+
+async findOneWithRefreshToken(filter: any): Promise<IUser | null> {
+  return this.model.findOne(filter).select('+refreshToken +refreshTokenExpires');
+}
 }

@@ -11,5 +11,7 @@ export interface IUser extends Document {
   resetPasswordExpires?: Date;
   createdAt?: Date;
   updatedAt?: Date;
+  refreshToken: string;
+  refreshTokenExpires: Date | undefined
   comparePassword(candidatePassword: string): Promise<boolean>;
 }

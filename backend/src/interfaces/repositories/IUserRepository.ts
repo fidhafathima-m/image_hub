@@ -6,4 +6,6 @@ export interface IUserRepository {
   create(userData: Partial<IUser>): Promise<IUser>;
   update(id: string, updateData: Partial<IUser>): Promise<IUser | null>;
   findByResetToken(tokenHash: string): Promise<IUser | null>;
+  findOne(filter: any): Promise<IUser | null>;
+  findOneWithRefreshToken(filter: any): Promise<IUser | null>;
 }
