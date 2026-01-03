@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { IUserService } from "../interfaces/services/IUserService.js";
-import { ErrorMessages, HttpStatus, SuccessMessages } from "../constants";
+import { ErrorMessages, HttpStatus, SuccessMessages } from "../constants/index.js";
 
 export class AuthController {
   private _authService: IUserService;

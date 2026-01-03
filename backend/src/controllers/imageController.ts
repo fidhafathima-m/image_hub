@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { AuthRequest } from "../types/index.js";
 import { IImageService } from "../interfaces/services/IImageService.js";
-import { ErrorMessages, HttpStatus, SuccessMessages } from "../constants";
+import { ErrorMessages, HttpStatus, SuccessMessages } from "../constants/index.js";
 
 export class ImageController {
   private _imageService: IImageService;
