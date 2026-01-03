@@ -1,4 +1,4 @@
-import cloudinary from "../config/cloudinary";
+import cloudinary from "../config/cloudinary.js";
 import { IImage } from "../interfaces/IImage.js";
 import { IImageRepository } from "../interfaces/repositories/IImageRepository.js";
 
